@@ -22,16 +22,24 @@ const sizeStyles: Record<ButtonSize, string> = {
   lg: "px-6 py-3 text-base",
 };
 
-export function Button({
+// Also used to style links as buttons: a <button> inside a <Link> is invalid HTML.
+export function buttonStyles({
   variant = "primary",
   size = "md",
+}: { variant?: ButtonVariant; size?: ButtonSize } = {}) {
+  return `inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantStyles[variant]} ${sizeStyles[size]}`;
+}
+
+export function Button({
+  variant,
+  size,
   className = "",
   children,
   ...props
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      className={`${buttonStyles({ variant, size })} ${className}`}
       {...props}
     >
       {children}

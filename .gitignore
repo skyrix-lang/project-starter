@@ -9,13 +9,22 @@ node_modules
 .pnp.*
 
 # Build
-dist
+.next/
+out/
+next-env.d.ts
+.turbo/
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
 
 # IDE
 .idea
 
 # Claude
-.claude
+.claude/*
+!.claude/skills/
 
 # Environment
 .env

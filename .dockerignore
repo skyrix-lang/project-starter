@@ -1,0 +1,17 @@
+.git
+.next
+.claude
+.idea
+.turbo
+.yarn/cache
+.yarn/install-state.gz
+node_modules
+out
+e2e
+playwright.config.ts
+test-results
+playwright-report
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

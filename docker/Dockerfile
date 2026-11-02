@@ -1,22 +1,33 @@
-#node
-FROM node:22-alpine as build
+# dependency stage
+FROM node:22-alpine AS deps
 WORKDIR /app
-COPY . .
-RUN npm install -g
 RUN corepack enable
-RUN yarn install
+COPY . .
+RUN yarn install --immutable
+
+# build stage — static pages embed the site URL, so it's needed here
+FROM deps AS build
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN yarn build
 
-#webserver
-FROM nginx:stable-alpine
+# migration stage — applies drizzle/ to DATABASE_URL, then exits
+FROM deps AS migrate
+CMD ["yarn", "db:migrate"]
 
-COPY --from=build /app/dist /usr/share/nginx/html
-RUN chown nginx.nginx /usr/share/nginx/html/ -R
+# runtime stage — Next.js standalone server (SSR / Server Actions)
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-RUN if ! grep -q "include /etc/nginx/conf.d/*.conf" /etc/nginx/nginx.conf; then echo "\ninclude /etc/nginx/conf.d/*.conf;" >> /etc/nginx/nginx.conf; fi
+# standalone bundles server.js + minimal node_modules; `yarn build` has already
+# copied public/ and .next/static into it, so one copy is enough.
+COPY --from=build --chown=node:node /app/.next/standalone ./
 
-COPY nginx.conf /etc/nginx/nginx.conf.d/nginx-exodia.conf
+USER node
 
-EXPOSE 80
+EXPOSE 3000
 
-CMD ["nginx -g 'daemon off;'"]
+CMD ["node", "server.js"]

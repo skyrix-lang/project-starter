@@ -1,3 +1,7 @@
+export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled"] as const;
+
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
 export interface Booking {
   id: string;
   title: string;
@@ -8,9 +12,7 @@ export interface Booking {
   status: BookingStatus;
 }
 
-export type BookingStatus = "pending" | "confirmed" | "cancelled";
-
 export interface NavLink {
   label: string;
-  to: string;
+  href: string;
 }
