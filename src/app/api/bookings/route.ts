@@ -1,9 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import {
-  bookingStatusSchema,
-  createBookingSchema,
-} from "@/lib/booking-schema";
+import { bookingStatusSchema, createBookingSchema } from "@/lib/booking-schema";
 import { createBooking, getBookings } from "@/lib/bookings";
 import { getUser } from "@/lib/session";
 

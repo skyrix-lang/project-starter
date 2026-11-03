@@ -11,8 +11,10 @@ Use the `new-page`, `new-feature` and `seo-check` skills for those tasks.
 
 ## Commands
 
-- `yarn check`, `yarn lint`, `yarn test`: all three must pass before work is done.
-  `yarn test` needs Docker, and starts Postgres itself.
+- `yarn format`, then `yarn check`, `yarn lint`, `yarn test`: all must pass before
+  work is done. `yarn test` needs Docker, and starts Postgres itself.
+- Lint is oxlint and formatting is oxfmt (oxc.rs), not ESLint or Prettier.
+  Suppress a rule with `// oxlint-disable-next-line <rule>` and a reason.
 - `yarn db:up`, `yarn db:generate`, `yarn db:migrate`, `yarn db:seed`.
 - Change dependencies with `yarn add` and `yarn remove`, never by editing
   `package.json`, so `yarn.lock` stays in sync. Docker uses `--immutable`.

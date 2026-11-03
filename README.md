@@ -75,7 +75,8 @@ yarn dev      # start the dev server (Turbopack) on http://localhost:3000
 yarn build    # production build (emits .next/standalone with assets)
 yarn start    # run the standalone production server
 yarn check    # type-check with tsc --noEmit
-yarn lint     # lint with ESLint
+yarn lint     # lint with oxlint (.oxlintrc.json)
+yarn format   # format with oxfmt (.oxfmtrc.json); format:check only checks
 yarn test     # run the Playwright tests
 yarn clean    # remove build output
 ```
@@ -181,13 +182,13 @@ creates an account or a password: people sign in with **Google**, or with a
 the `sessions` table, so ending one (for example by deleting it) takes effect
 immediately.
 
-| Variable | Needed for |
-| --- | --- |
-| `AUTH_SECRET` | Always. Signs cookies and tokens. `npx auth secret` |
-| `AUTH_URL` | Always in production. The public address; sign-in links use it, never the request's `Host` header |
-| `AUTH_EMAIL_SERVER`, `AUTH_EMAIL_FROM` | Email links. An SMTP URL such as `smtps://user:pass@smtp.resend.com:465` |
-| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google |
-| `AUTH_ALLOWED_EMAILS` | Optional. Comma-separated addresses and `@domains` allowed to sign in |
+| Variable                               | Needed for                                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`                          | Always. Signs cookies and tokens. `npx auth secret`                                               |
+| `AUTH_URL`                             | Always in production. The public address; sign-in links use it, never the request's `Host` header |
+| `AUTH_EMAIL_SERVER`, `AUTH_EMAIL_FROM` | Email links. An SMTP URL such as `smtps://user:pass@smtp.resend.com:465`                          |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google                                                                                            |
+| `AUTH_ALLOWED_EMAILS`                  | Optional. Comma-separated addresses and `@domains` allowed to sign in                             |
 
 - **A provider is on when its variables are set**, and the sign-in page only
   shows those. Leave Google's unset to use email only, or the reverse.

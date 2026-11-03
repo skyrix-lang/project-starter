@@ -18,15 +18,15 @@ Create `src/app/<route>/page.tsx` as a Server Component. Keep route-only compone
 beside the page, and shared ones in `src/components`. `params` and `searchParams`
 are promises: await them. Validate `searchParams` with Zod `safeParse`.
 
-| | Public page | App page |
-|---|---|---|
-| Rendering | Static or `revalidate` | Dynamic is fine |
-| `loading.tsx` | No | Yes, if it reads data |
-| Canonical | Yes | No |
-| Robots | Indexable | `robots: { index: false }` |
-| Sitemap | Add to `src/app/sitemap.ts` | Leave out |
-| Open Graph | Yes | No |
-| Structured data | If a type fits | No |
+|                 | Public page                 | App page                   |
+| --------------- | --------------------------- | -------------------------- |
+| Rendering       | Static or `revalidate`      | Dynamic is fine            |
+| `loading.tsx`   | No                          | Yes, if it reads data      |
+| Canonical       | Yes                         | No                         |
+| Robots          | Indexable                   | `robots: { index: false }` |
+| Sitemap         | Add to `src/app/sitemap.ts` | Leave out                  |
+| Open Graph      | Yes                         | No                         |
+| Structured data | If a type fits              | No                         |
 
 A public page needs metadata like this. A page's `openGraph` replaces the layout's,
 so spread `sharedOpenGraph`:
@@ -72,5 +72,5 @@ Add tests to `e2e/` covering the page's content and main interaction. For a publ
 page, add to `e2e/seo.spec.ts`: canonical, description, sitemap entry and no
 `noindex`. For an app page, check it has `noindex` and isn't in the sitemap.
 
-Run `yarn check`, `yarn lint` and `yarn test`. Confirm in the `yarn build` route
-table that a public page is `○` (static), not `ƒ` (dynamic).
+Run `yarn format`, then `yarn check`, `yarn lint` and `yarn test`. Confirm in the
+`yarn build` route table that a public page is `○` (static), not `ƒ` (dynamic).

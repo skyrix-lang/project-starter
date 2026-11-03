@@ -25,7 +25,9 @@ test.describe("GET /api/bookings", () => {
 
     const bookings: Booking[] = await response.json();
     expect(bookings.length).toBeGreaterThan(0);
-    expect(bookings.every((booking) => booking.status === "pending")).toBe(true);
+    expect(bookings.every((booking) => booking.status === "pending")).toBe(
+      true,
+    );
   });
 
   test("rejects an unknown status", async ({ request }) => {

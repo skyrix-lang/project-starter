@@ -59,7 +59,7 @@ new route. Keep URL-based state, such as filters, in `searchParams` with `<Link>
 
 ## 8. Finish
 
-- Run `yarn check`, `yarn lint` and `yarn test`.
+- Run `yarn format`, then `yarn check`, `yarn lint` and `yarn test`.
 - Break the feature once to confirm the new tests fail, then revert.
 - Update the README for new commands, variables or concepts.
 - Say plainly if the feature needs per-user data: auth is a sign-in gate only.

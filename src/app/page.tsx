@@ -62,8 +62,8 @@ export default function Home() {
           Book with <span className="text-primary-600">confidence</span>
         </h1>
         <p className="mt-4 text-lg text-surface-500 max-w-2xl mx-auto">
-          The simplest way to manage your bookings. Schedule, track, and organize
-          all your appointments in one place.
+          The simplest way to manage your bookings. Schedule, track, and
+          organize all your appointments in one place.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link href="/bookings" className={buttonStyles({ size: "lg" })}>

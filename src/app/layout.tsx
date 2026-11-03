@@ -31,11 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={inter.variable}
-      data-scroll-behavior="smooth"
-    >
+    <html lang="en" className={inter.variable} data-scroll-behavior="smooth">
       <body>
         <div className="min-h-screen flex flex-col">
           <Header />
