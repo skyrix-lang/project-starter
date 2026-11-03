@@ -128,6 +128,16 @@ for example in CI, set `E2E_DATABASE_URL`; its database name must end in `_e2e`.
   `test.use(signedOut)` then `signInByEmail(page)`. Set `E2E_SMTP_URL` and
   `E2E_MAILPIT_URL` to use another Mailpit.
 
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`.
+One job runs `yarn format:check`, `yarn check` and `yarn lint`. The other runs
+`yarn test`, which starts Postgres and Mailpit in Docker on the runner, just as it
+does locally. With `CI` set, Playwright retries a failed test twice and fails on
+`test.only`. The HTML report is uploaded as the `playwright-report` artifact.
+Dependabot (`.github/dependabot.yml`) opens weekly update pull requests for
+dependencies, GitHub Actions and the Docker image, and CI runs on each of them.
+
 ## Docker
 
 ```bash

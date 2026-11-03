@@ -1,0 +1,31 @@
+# Weekly update pull requests. Minor and patch updates come grouped in one pull
+# request per ecosystem; each major update gets its own, since it may need code
+# changes. CI runs on every one of them.
+version: 2
+updates:
+  - package-ecosystem: npm # also covers Yarn and yarn.lock
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    ignore:
+      # Node major versions are chosen on purpose, with .nvmrc, not bumped to
+      # the next odd-numbered, short-lived release.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
