@@ -16,6 +16,8 @@ export const metadata: Metadata = {
 // Auth.js sends people back here with ?error=<code> when sign-in fails.
 const errorMessages: Record<string, string> = {
   AccessDenied: "This account isn't allowed to sign in.",
+  RateLimited:
+    "Too many sign-in emails were requested. Wait a few minutes, then try again.",
   Verification:
     "That sign-in link has expired or was already used. Request a new one.",
 };

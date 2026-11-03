@@ -9,9 +9,10 @@ import type { BookingStatus } from "@/types";
 // Server Actions are public POST endpoints, so each one checks the session
 // itself. A signed-out user is sent to sign in, then back to the list.
 async function setStatus(id: string, status: BookingStatus) {
-  await requireUser("/bookings");
-  // A booking someone else removed isn't a failure: it just leaves the list.
-  await updateBookingStatus(bookingIdSchema.parse(id), status);
+  const user = await requireUser("/bookings");
+  // A booking that was removed, or isn't this user's, isn't a failure: nothing
+  // changes, and it isn't on the refreshed list.
+  await updateBookingStatus(user.id, bookingIdSchema.parse(id), status);
   revalidatePath("/bookings");
 }
 

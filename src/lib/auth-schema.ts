@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-export const emailSchema = z.email().trim().toLowerCase().max(254);
+// Trimmed before the format check, which would otherwise reject the spaces.
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254)
+  .pipe(z.email());
 
 /**
  * `allowed` is a comma-separated list of addresses and `@domain` entries, from

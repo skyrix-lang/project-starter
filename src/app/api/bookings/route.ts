@@ -5,7 +5,8 @@ import { createBooking, getBookings } from "@/lib/bookings";
 import { getUser } from "@/lib/session";
 
 export async function GET(request: Request) {
-  if (!(await getUser())) {
+  const user = await getUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,11 +22,12 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json(await getBookings(status.data));
+  return NextResponse.json(await getBookings(user.id, status.data));
 }
 
 export async function POST(request: Request) {
-  if (!(await getUser())) {
+  const user = await getUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const booking = await createBooking(input.data);
+  const booking = await createBooking(user.id, input.data);
   revalidatePath("/bookings");
   return NextResponse.json(booking, { status: 201 });
 }

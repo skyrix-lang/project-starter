@@ -1,6 +1,7 @@
 import {
   customType,
   date,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -20,15 +21,51 @@ const timeOfDay = customType<{ data: string; driverData: string }>({
   fromDriver: (value) => value.slice(0, 5),
 });
 
-export const bookings = pgTable("bookings", {
-  id: uuid().primaryKey().defaultRandom(),
-  title: text().notNull(),
-  description: text().notNull().default(""),
-  date: date({ mode: "string" }).notNull(),
-  time: timeOfDay().notNull(),
-  duration: integer().notNull(),
-  status: bookingStatus().notNull().default("pending"),
-});
+// Each booking belongs to the user who created it, and only they can see or
+// change it (src/lib/bookings.ts).
+export const bookings = pgTable(
+  "bookings",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    description: text().notNull().default(""),
+    date: date({ mode: "string" }).notNull(),
+    time: timeOfDay().notNull(),
+    duration: integer().notNull(),
+    status: bookingStatus().notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Set by Drizzle on every update made through it, not by the database.
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  // Serves the list: one user's bookings, in date order.
+  (booking) => [
+    index("bookings_user_id_date_time_idx").on(
+      booking.userId,
+      booking.date,
+      booking.time,
+    ),
+  ],
+);
+
+// Fixed-window counters for src/lib/rate-limit.ts, such as sign-in emails per
+// address. A row is reused when its window has passed, and deleted later.
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text().primaryKey(),
+    count: integer().notNull(),
+    resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+  },
+  (rateLimit) => [index("rate_limits_reset_at_idx").on(rateLimit.resetAt)],
+);
 
 // Auth.js tables, used by its Drizzle adapter (src/lib/auth.ts). The adapter
 // reads them by property name, so the SQL names can follow this project's style.

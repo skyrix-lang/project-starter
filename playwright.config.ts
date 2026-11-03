@@ -20,7 +20,8 @@ process.env.NEXT_PUBLIC_SITE_URL = "https://bookinghub.test";
 // (`yarn mail:up`), where e2e/support.ts reads them. Google is configured with a
 // fake client so its button shows; the tests never complete a Google sign-in.
 Object.assign(process.env, {
-  AUTH_SECRET: "e2e-secret-not-for-production",
+  // Production builds require at least 32 characters (src/lib/env.ts).
+  AUTH_SECRET: "e2e-secret-not-for-production-0123456789",
   AUTH_URL: BASE_URL,
   AUTH_EMAIL_SERVER: process.env.E2E_SMTP_URL ?? "smtp://localhost:1025",
   AUTH_EMAIL_FROM: "BookingHub <no-reply@bookinghub.test>",

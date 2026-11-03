@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   checks:
-    name: Format, types and lint
+    name: Format, types, lint and unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,6 +31,7 @@ jobs:
       - run: yarn format:check
       - run: yarn check
       - run: yarn lint
+      - run: yarn test:unit
 
   e2e:
     name: Playwright

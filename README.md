@@ -20,6 +20,9 @@ A single full-stack Next.js app — there is no separate backend process. The
 - **[Auth.js](https://authjs.dev)** (`src/lib/auth.ts`) signs people in with
   Google or an emailed link, and keeps sessions in Postgres. See
   [Authentication](#authentication).
+- **`src/lib/env.ts`** validates the server's environment variables with Zod.
+  `src/instrumentation.ts` runs it when the server starts, so a missing or
+  invalid value stops it with a list of every problem.
 
 ```
 src/
@@ -35,19 +38,25 @@ src/
     sign-in/check-email/        "check your email" page
     api/bookings/route.ts       GET list / POST create
     api/bookings/[id]/route.ts  PATCH status
+    api/health/route.ts         public health check (database reachable)
     api/auth/[...nextauth]/     Auth.js endpoints (callbacks, sign-out, session)
     error.tsx, not-found.tsx    error and 404 pages
     icon.svg                    favicon
     globals.css                 Tailwind v4 theme
   lib/                          data layer and validation schemas
-  lib/auth.ts                   Auth.js config: providers, adapter, allowlist
+  lib/auth.ts                   Auth.js config: providers, adapter, allowlist, limits
+  lib/env.ts                    environment validation
+  lib/rate-limit.ts             Postgres-backed rate limiter
   lib/session.ts                getUser() / requireUser() for pages, actions, routes
   lib/db/                       Drizzle schema, connection and demo data
+  instrumentation.ts            runs once at server start: checks the environment
   components/                   layout + UI components
   types/                        shared types
 drizzle/                        SQL migrations
 scripts/                        database helper scripts
 e2e/                            Playwright tests
+src/**/*.test.ts                unit tests (node:test)
+.github/                        CI workflow and Dependabot
 ```
 
 ## Getting started
@@ -60,12 +69,13 @@ cp .env.example .env
 yarn db:up        # start Postgres in Docker
 yarn mail:up      # start Mailpit, which catches sign-in emails
 yarn db:migrate   # create the tables
-yarn db:seed      # add demo bookings (optional)
 yarn dev
 ```
 
 Set `AUTH_SECRET` in `.env` (`npx auth secret` prints one). To sign in, enter any
-email on `/sign-in` and open the link at http://localhost:8025.
+email on `/sign-in` and open the link at http://localhost:8025. Bookings belong
+to the user who creates them, so to see demo data, sign in once, then run
+`yarn db:seed you@example.com` with that address.
 
 ## Scripts
 
@@ -76,6 +86,7 @@ yarn start    # run the standalone production server
 yarn check    # type-check with tsc --noEmit
 yarn lint     # lint with oxlint (.oxlintrc.json)
 yarn format   # format with oxfmt (.oxfmtrc.json); format:check only checks
+yarn test:unit # run the unit tests (no Docker or build needed)
 yarn test     # run the Playwright tests
 yarn clean    # remove build output
 ```
@@ -87,7 +98,7 @@ yarn db:up        # start the local Postgres container
 yarn db:down      # stop it (data is kept in the booking-db volume)
 yarn db:generate  # create a migration from changes to the schema
 yarn db:migrate   # apply pending migrations
-yarn db:seed      # add demo bookings to an empty database
+yarn db:seed <email>  # give a signed-in user the demo bookings
 yarn db:studio    # browse the data in Drizzle Studio
 yarn mail:up      # start Mailpit: SMTP on :1025, inbox at http://localhost:8025
 yarn mail:down    # stop it
@@ -99,6 +110,14 @@ Applied migrations are recorded in `drizzle.__drizzle_migrations`. The app never
 migrates on startup: run it as a deploy step, before the new version starts.
 
 ## Tests
+
+Unit tests for pure logic, such as validation schemas, sit next to the code as
+`src/**/*.test.ts` and run with `yarn test:unit`. They use Node's built-in
+[test runner](https://nodejs.org/api/test.html) and `node:assert`, run through
+`tsx` so TypeScript and the `@/` alias work: no test framework to install. The
+`react-server` condition makes `server-only` importable outside Next.js. They
+take a second and need no database. Anything that needs the database, the
+server or a browser is an end-to-end test.
 
 End-to-end tests live in `e2e/` and use [Playwright](https://playwright.dev).
 Install the browser once, then run them:
@@ -122,6 +141,11 @@ for example in CI, set `E2E_DATABASE_URL`; its database name must end in `_e2e`.
   test that causes one on purpose sets `test.use({ allowConsoleErrors: true })`.
 - **Tests run in parallel on one database.** A test that changes data should
   create its own booking with `createBooking` from `e2e/support.ts`.
+- **Seed data belongs to the shared user.** `e2e/reset-database.ts` creates
+  `e2e-shared@example.test` with the demo bookings, and the signed-in tests use
+  that user. A test that signs in as its own user starts with no bookings.
+- **Each test has its own client address.** Sign-in emails are rate limited per
+  address, so `e2e/support.ts` sends a random `x-forwarded-for` from each test.
 - **Tests are signed in.** The `setup` project signs in once through the real
   email flow (Mailpit) and saves the session to `e2e/.auth/`; the other projects
   reuse it. A test that signs out or ends a session must use its own user:
@@ -131,7 +155,8 @@ for example in CI, set `E2E_DATABASE_URL`; its database name must end in `_e2e`.
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`.
-One job runs `yarn format:check`, `yarn check` and `yarn lint`. The other runs
+One job runs `yarn format:check`, `yarn check`, `yarn lint` and
+`yarn test:unit`. The other runs
 `yarn test`, which starts Postgres and Mailpit in Docker on the runner, just as it
 does locally. With `CI` set, Playwright retries a failed test twice and fails on
 `test.only`. The HTML report is uploaded as the `playwright-report` artifact.
@@ -179,9 +204,25 @@ content is still in the HTML, for crawlers that read it. Delete `loading.tsx` if
 route has to work without JavaScript; you lose the skeleton.
 
 Streaming also means the HTTP status is sent before the database answers. If a
-query fails, `/bookings` returns 200 and the browser shows the error page. The API
-needs a session, so for a health check that reaches the database, add a small
-public route such as `/api/health`.
+query fails, `/bookings` returns 200 and the browser shows the error page. So for
+health checks, use `/api/health` instead: it needs no session, and returns 200
+`{"status":"ok"}` when the database answers, or 503 when it doesn't. Point the
+load balancer's or orchestrator's readiness check at it.
+
+## Security headers
+
+`next.config.ts` sends a Content Security Policy, HSTS, `nosniff`,
+`X-Frame-Options` and `Referrer-Policy` on every response.
+
+- **The CSP is static**, so public pages stay static. It allows inline scripts,
+  because Next.js inlines its own. A [nonce-based policy](https://nextjs.org/docs/app/guides/content-security-policy)
+  is stricter but renders every page on each request.
+- **Adding a third party** (analytics, a CDN, an embedded map) means adding its
+  origins to the matching directive. Playwright tests fail on any CSP violation,
+  because the browser reports it as a console error.
+- **HSTS** tells browsers to use HTTPS for two years, including subdomains.
+  Browsers ignore it over plain HTTP, so local development is unaffected. Remove
+  `includeSubDomains` if a subdomain still needs plain HTTP.
 
 ## Authentication
 
@@ -193,7 +234,7 @@ immediately.
 
 | Variable                               | Needed for                                                                                        |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `AUTH_SECRET`                          | Always. Signs cookies and tokens. `npx auth secret`                                               |
+| `AUTH_SECRET`                          | Always. Signs cookies and tokens. `npx auth secret`. 32+ characters in production                 |
 | `AUTH_URL`                             | Always in production. The public address; sign-in links use it, never the request's `Host` header |
 | `AUTH_EMAIL_SERVER`, `AUTH_EMAIL_FROM` | Email links. An SMTP URL such as `smtps://user:pass@smtp.resend.com:465`                          |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google                                                                                            |
@@ -215,8 +256,16 @@ immediately.
 - **What's protected:** `/bookings` and its Server Actions send signed-out
   visitors to `/sign-in`, and `/api/bookings` returns 401. The JSON API uses the
   same session cookie, so it's meant for the browser, not for scripts.
-- **Bookings are shared:** every signed-in user sees and changes all of them.
-  Add a `user_id` column and filter by `requireUser()`'s id for per-user data.
+- **Bookings are per user:** each one has a `user_id`, and every function in
+  `src/lib/bookings.ts` takes the signed-in user's id and only reads or changes
+  that user's rows. Another user's booking acts as if it doesn't exist (404 in
+  the API). Copy this for any per-user data.
+- **Sign-in emails are rate limited:** three per address and ten per client
+  address every 15 minutes, counted in the `rate_limits` table, so all server
+  instances share them. Beyond that, `/sign-in` shows "Too many sign-in emails".
+  The client address is the last `x-forwarded-for` entry, so run the app behind
+  a reverse proxy that sets it: without one, a client can send its own and get
+  around the per-client limit. Change the limits at the top of `src/lib/auth.ts`.
 - **Protecting new code:** call `requireUser(returnTo)` from `src/lib/session.ts`
   at the top of each page and Server Action, and `getUser()` in each Route
   Handler. Check inside each one: a layout or `proxy.ts` check alone doesn't

@@ -123,5 +123,12 @@ test("sends security headers", async ({ request }) => {
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=63072000; includeSubDomains",
   });
+  // Every browser test also runs under this policy, and a violation is a
+  // console error, which fails the test.
+  expect(headers["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
+  expect(headers["content-security-policy"]).toContain("object-src 'none'");
 });

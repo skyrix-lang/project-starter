@@ -52,6 +52,7 @@
     "clean": "rm -rf .next out",
     "docker:build": "docker build --no-cache --build-arg NEXT_PUBLIC_SITE_URL -t $npm_package_name:$npm_package_version -f docker/Dockerfile .",
     "format": "oxfmt",
-    "format:check": "oxfmt --check"
+    "format:check": "oxfmt --check",
+    "test:unit": "tsx --conditions=react-server --test 'src/**/*.test.ts'"
   }
 }

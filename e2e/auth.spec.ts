@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import {
   bookingCard,
   createBooking,
@@ -5,6 +6,7 @@ import {
   expect,
   gotoHydrated,
   magicLinkFor,
+  requestSignInLink,
   signedOut,
   signInByEmail,
   test,
@@ -151,5 +153,40 @@ test.describe("own session", () => {
       .click();
 
     await expect(page).toHaveURL("/sign-in?callbackUrl=%2Fbookings");
+  });
+});
+
+test.describe("sign-in email limits", () => {
+  test.use(signedOut);
+
+  const checkEmail = (page: Page) =>
+    page.getByRole("heading", { name: "Check your email" });
+  const refused = (page: Page) => page.getByRole("main").getByRole("alert");
+
+  test("sends at most three emails to one address", async ({ page }) => {
+    const email = uniqueEmail();
+    for (let sent = 0; sent < 3; sent++) {
+      await page.goto("/sign-in");
+      await requestSignInLink(page, email);
+      await expect(checkEmail(page)).toBeVisible();
+    }
+
+    await page.goto("/sign-in");
+    await requestSignInLink(page, email);
+
+    await expect(refused(page)).toContainText("Too many sign-in emails");
+  });
+
+  test("sends at most ten emails for one client", async ({ page }) => {
+    for (let sent = 0; sent < 10; sent++) {
+      await page.goto("/sign-in");
+      await requestSignInLink(page, uniqueEmail());
+      await expect(checkEmail(page)).toBeVisible();
+    }
+
+    await page.goto("/sign-in");
+    await requestSignInLink(page, uniqueEmail());
+
+    await expect(refused(page)).toContainText("Too many sign-in emails");
   });
 });

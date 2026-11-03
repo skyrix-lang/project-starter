@@ -8,7 +8,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!(await getUser())) {
+  const user = await getUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -25,7 +26,7 @@ export async function PATCH(
 
   const bookingId = bookingIdSchema.safeParse(id);
   const booking = bookingId.success
-    ? await updateBookingStatus(bookingId.data, input.data.status)
+    ? await updateBookingStatus(user.id, bookingId.data, input.data.status)
     : undefined;
   if (!booking) {
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });

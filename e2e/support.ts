@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   expect,
   test as base,
@@ -17,6 +17,13 @@ export const test = base.extend<{
   allowConsoleErrors: boolean;
   failOnConsoleError: void;
 }>({
+  // Sign-in emails are rate limited per client address, which the app reads
+  // from x-forwarded-for. Each test gets its own, as if from its own machine, so
+  // parallel tests don't share a limit.
+  // (`provide` is Playwright's `use`, renamed so it isn't taken for React's.)
+  extraHTTPHeaders: async ({ extraHTTPHeaders }, provide) => {
+    await provide({ ...extraHTTPHeaders, "x-forwarded-for": randomIp() });
+  },
   allowConsoleErrors: [false, { option: true }],
   failOnConsoleError: [
     async ({ page, allowConsoleErrors }, use) => {
@@ -35,6 +42,12 @@ export const test = base.extend<{
 });
 
 export { expect };
+
+/** An address in 198.18.0.0/15, a range reserved for testing. */
+function randomIp() {
+  const [a, b, c] = randomBytes(3);
+  return `198.${18 + (a % 2)}.${b}.${c}`;
+}
 
 /**
  * Tests run in parallel against one database, so a test that changes data
@@ -144,8 +157,7 @@ export async function signInByEmail(
   { email = uniqueEmail(), callbackUrl = "/bookings" } = {},
 ) {
   await page.goto(`/sign-in?${new URLSearchParams({ callbackUrl })}`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+  await requestSignInLink(page, email);
   await expect(
     page.getByRole("heading", { name: "Check your email" }),
   ).toBeVisible();
@@ -153,6 +165,12 @@ export async function signInByEmail(
   await page.goto(await magicLinkFor(email));
   await expect(page).toHaveURL(callbackUrl);
   return email;
+}
+
+/** Submits the email form on the sign-in page, which must be open. */
+export async function requestSignInLink(page: Page, email: string) {
+  await page.getByLabel("Email").fill(email);
+  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
 }
 
 /** Ends a user's sessions directly in the database, as if they had expired. */

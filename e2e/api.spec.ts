@@ -163,3 +163,43 @@ test.describe("without a session", () => {
     expect(response.status()).toBe(401);
   });
 });
+
+test.describe("GET /api/health", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("answers without a session when the database is up", async ({
+    request,
+  }) => {
+    const response = await request.get("/api/health");
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toContain("no-store");
+    expect(await response.json()).toEqual({ status: "ok" });
+  });
+});
+
+test("bookings in the API don't expose their owner", async ({ request }) => {
+  const booking = await createBooking(request);
+
+  expect(Object.keys(booking).sort()).toEqual([
+    "date",
+    "description",
+    "duration",
+    "id",
+    "status",
+    "time",
+    "title",
+  ]);
+});
+
+test("the session sent to the browser holds no token", async ({ request }) => {
+  const session = await (await request.get("/api/auth/session")).json();
+
+  expect(Object.keys(session).sort()).toEqual(["expires", "user"]);
+  expect(Object.keys(session.user).sort()).toEqual([
+    "email",
+    "id",
+    "image",
+    "name",
+  ]);
+});

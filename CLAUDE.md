@@ -11,8 +11,9 @@ Use the `new-page`, `new-feature` and `seo-check` skills for those tasks.
 
 ## Commands
 
-- `yarn format`, then `yarn check`, `yarn lint`, `yarn test`: all must pass before
-  work is done. `yarn test` needs Docker, and starts Postgres itself.
+- `yarn format`, then `yarn check`, `yarn lint`, `yarn test:unit`, `yarn test`: all
+  must pass before work is done. `yarn test` needs Docker, and starts Postgres
+  itself. CI (`.github/workflows/ci.yml`) runs the same on every pull request.
 - Lint is oxlint and formatting is oxfmt (oxc.rs), not ESLint or Prettier.
   Suppress a rule with `// oxlint-disable-next-line <rule>` and a reason.
 - `yarn db:up`, `yarn db:generate`, `yarn db:migrate`, `yarn db:seed`.
@@ -63,6 +64,8 @@ Use the `new-page`, `new-feature` and `seo-check` skills for those tasks.
 
 ## Environment
 
+- Add new server variables to the schema in `src/lib/env.ts` and read them with
+  `env()`, not `process.env`, so a bad value stops the server at startup.
 - Add new variables to `.env.example`, and the README if they need explaining.
 - `NEXT_PUBLIC_*` values are embedded at build time, so Docker needs them as a
   build argument, not a runtime variable.
@@ -73,11 +76,16 @@ Auth.js handles sign-in (Google and email links): see "Authentication" in the
 README. Server Actions and Route Handlers are public endpoints, so each one checks
 the session itself. Call `requireUser(returnTo)` from `src/lib/session.ts` in
 pages and Server Actions, and `getUser()` in Route Handlers, returning 401 without
-a user. The root layout stays static, so never call `auth()` in it. Every
-signed-in user can see all bookings, so say so when a feature needs per-user data.
+a user (`/api/health` is the one public route). The root layout stays static, so
+never call `auth()` in it. Data is per user: pass `user.id` to every `src/lib`
+function, which filters by it, as `src/lib/bookings.ts` does. Limit anything that
+sends email or costs money with `hit()` from `src/lib/rate-limit.ts`. Third-party
+scripts, images or APIs need their origins added to the CSP in `next.config.ts`.
 
 ## Tests
 
+- Pure logic (schemas, parsing, helpers) gets a unit test next to it, as
+  `src/lib/<name>.test.ts`, with `node:test` and `node:assert/strict`.
 - New behaviour gets a Playwright test in `e2e/`. Import `test` and `expect` from
   `e2e/support.ts` so console errors, including hydration mismatches, fail the test.
 - Tests run in parallel on one database. Tests that change data create their own

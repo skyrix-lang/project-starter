@@ -1,13 +1,11 @@
 import "server-only";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { env } from "@/lib/env";
 import * as schema from "./schema";
 
 function connect() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is not set");
-
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ connectionString: env().DATABASE_URL });
   // An idle connection dropping (e.g. a database restart) is otherwise an
   // uncaught exception. The pool replaces it on the next query.
   pool.on("error", (error) => console.error("Idle connection failed:", error));

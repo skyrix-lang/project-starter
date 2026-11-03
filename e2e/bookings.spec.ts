@@ -1,3 +1,4 @@
+import { SIGNED_IN_STATE } from "./auth-state";
 import {
   bookingCard,
   createBooking,
@@ -5,6 +6,8 @@ import {
   expect,
   gotoHydrated,
   setBookingStatus,
+  signedOut,
+  signInByEmail,
   test,
 } from "./support";
 
@@ -234,5 +237,38 @@ test.describe("when an action fails", () => {
     await page.getByRole("button", { name: "Try again" }).click();
 
     await expect(bookingCard(page, title)).toBeVisible();
+  });
+});
+
+test.describe("another user", () => {
+  test.use(signedOut);
+
+  test("can't see or change someone else's bookings", async ({
+    page,
+    playwright,
+    baseURL,
+  }) => {
+    const owner = await playwright.request.newContext({
+      baseURL,
+      storageState: SIGNED_IN_STATE,
+    });
+    const { id, title } = await createBooking(owner);
+    await signInByEmail(page);
+
+    await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
+    await expect(page.getByText("No bookings found.")).toBeVisible();
+    await expect(bookingCard(page, title)).toBeHidden();
+    expect(await (await page.request.get("/api/bookings")).json()).toEqual([]);
+
+    const update = await page.request.patch(`/api/bookings/${id}`, {
+      data: { status: "cancelled" },
+    });
+    expect(update.status()).toBe(404);
+
+    const ownersView = await (await owner.get("/api/bookings")).json();
+    expect(ownersView).toContainEqual(
+      expect.objectContaining({ id, status: "pending" }),
+    );
+    await owner.dispose();
   });
 });

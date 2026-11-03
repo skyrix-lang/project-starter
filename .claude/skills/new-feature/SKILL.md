@@ -25,7 +25,10 @@ Export inferred types.
 ## 3. Data layer
 
 Add `src/lib/<entity>.ts`, starting with `import "server-only"`. Export small async
-functions that use `getDb()`. Put no HTTP or React code here.
+functions that use `getDb()`. Put no HTTP or React code here. For per-user data,
+give the table a `user_id` and make each function take the user's id and filter
+by it, as `src/lib/bookings.ts` does: another user's row then behaves as if it
+doesn't exist. Return only public columns, not the owner.
 
 ## 4. Server Actions
 
@@ -55,11 +58,12 @@ new route. Keep URL-based state, such as filters, in `searchParams` with `<Link>
 - Add API cases to `e2e/api.spec.ts`, including invalid input and unknown records.
 - Add browser tests for the user flow, the pending state and the failure path.
 - Add a `createX` helper to `e2e/support.ts` that produces unique values.
+- Add `node:test` unit tests next to new pure logic, such as Zod schemas.
 - Update `src/lib/db/seed.ts` if demo data helps.
 
 ## 8. Finish
 
-- Run `yarn format`, then `yarn check`, `yarn lint` and `yarn test`.
+- Run `yarn format`, then `yarn check`, `yarn lint`, `yarn test:unit` and `yarn test`.
 - Break the feature once to confirm the new tests fail, then revert.
 - Update the README for new commands, variables or concepts.
-- Say plainly if the feature needs per-user data: auth is a sign-in gate only.
+- Say plainly whether the new data is per user or shared by everyone.

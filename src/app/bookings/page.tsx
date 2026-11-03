@@ -27,10 +27,10 @@ export default async function BookingsPage({
 }) {
   const { status } = await searchParams;
   const parsed = bookingStatusSchema.safeParse(status);
-  await requireUser(
+  const user = await requireUser(
     parsed.data ? `/bookings?status=${parsed.data}` : "/bookings",
   );
-  const bookings = await getBookings(parsed.data);
+  const bookings = await getBookings(user.id, parsed.data);
 
   return (
     <div className="space-y-6">

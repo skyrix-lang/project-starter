@@ -1,7 +1,8 @@
+import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { bookings } from "./schema";
 
-const DEMO_BOOKINGS: (typeof bookings.$inferInsert)[] = [
+const DEMO_BOOKINGS: Omit<typeof bookings.$inferInsert, "userId">[] = [
   {
     title: "Team Sync",
     description: "Weekly team standup meeting",
@@ -26,9 +27,11 @@ const DEMO_BOOKINGS: (typeof bookings.$inferInsert)[] = [
   },
 ];
 
-/** Adds the demo bookings to an empty database; otherwise does nothing. */
-export async function seedBookings(db: NodePgDatabase) {
-  if ((await db.$count(bookings)) === 0) {
-    await db.insert(bookings).values(DEMO_BOOKINGS);
+/** Gives the user the demo bookings, if they have none yet. */
+export async function seedBookings(db: NodePgDatabase, userId: string) {
+  if ((await db.$count(bookings, eq(bookings.userId, userId))) === 0) {
+    await db
+      .insert(bookings)
+      .values(DEMO_BOOKINGS.map((booking) => ({ ...booking, userId })));
   }
 }

@@ -2,9 +2,17 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
-export async function getUser() {
-  const session = await auth();
-  return session?.user ?? null;
+export interface SessionUser {
+  id: string;
+  email: string | null;
+  name: string | null;
+}
+
+/** The signed-in user, or null. `id` is the `users.id` that owns their data. */
+export async function getUser(): Promise<SessionUser | null> {
+  const user = (await auth())?.user;
+  if (!user?.id) return null;
+  return { id: user.id, email: user.email ?? null, name: user.name ?? null };
 }
 
 /**
