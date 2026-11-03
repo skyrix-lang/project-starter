@@ -17,6 +17,9 @@ A single full-stack Next.js app — there is no separate backend process. The
 - **Route Handlers** (`src/app/api/bookings`) expose a JSON HTTP API.
 - **Server Actions** (`src/app/bookings/actions.ts`) handle mutations from
   forms and revalidate the page.
+- **[Auth.js](https://authjs.dev)** (`src/lib/auth.ts`) signs people in with
+  Google or an emailed link, and keeps sessions in Postgres. See
+  [Authentication](#authentication).
 
 ```
 src/
@@ -26,14 +29,19 @@ src/
     bookings/page.tsx           Bookings list (SSR, ?status= filter)
     bookings/actions.ts         Server Actions (confirm / cancel)
     bookings/filter-bar.tsx     status filter links
-    bookings/submit-button.tsx  submit button with a pending state
     bookings/loading.tsx        loading skeleton
+    sign-in/page.tsx            sign-in page (Google, email link)
+    sign-in/actions.ts          sign-in Server Actions
+    sign-in/check-email/        "check your email" page
     api/bookings/route.ts       GET list / POST create
     api/bookings/[id]/route.ts  PATCH status
+    api/auth/[...nextauth]/     Auth.js endpoints (callbacks, sign-out, session)
     error.tsx, not-found.tsx    error and 404 pages
     icon.svg                    favicon
     globals.css                 Tailwind v4 theme
   lib/                          data layer and validation schemas
+  lib/auth.ts                   Auth.js config: providers, adapter, allowlist
+  lib/session.ts                getUser() / requireUser() for pages, actions, routes
   lib/db/                       Drizzle schema, connection and demo data
   components/                   layout + UI components
   hooks/                        reusable client hooks
@@ -51,10 +59,14 @@ Needs Node 22 and Docker.
 yarn install
 cp .env.example .env
 yarn db:up        # start Postgres in Docker
+yarn mail:up      # start Mailpit, which catches sign-in emails
 yarn db:migrate   # create the tables
 yarn db:seed      # add demo bookings (optional)
 yarn dev
 ```
+
+Set `AUTH_SECRET` in `.env` (`npx auth secret` prints one). To sign in, enter any
+email on `/sign-in` and open the link at http://localhost:8025.
 
 ## Scripts
 
@@ -77,6 +89,8 @@ yarn db:generate  # create a migration from changes to the schema
 yarn db:migrate   # apply pending migrations
 yarn db:seed      # add demo bookings to an empty database
 yarn db:studio    # browse the data in Drizzle Studio
+yarn mail:up      # start Mailpit: SMTP on :1025, inbox at http://localhost:8025
+yarn mail:down    # stop it
 ```
 
 To change the database, edit `src/lib/db/schema.ts`, run `yarn db:generate`,
@@ -108,6 +122,11 @@ for example in CI, set `E2E_DATABASE_URL`; its database name must end in `_e2e`.
   test that causes one on purpose sets `test.use({ allowConsoleErrors: true })`.
 - **Tests run in parallel on one database.** A test that changes data should
   create its own booking with `createBooking` from `e2e/support.ts`.
+- **Tests are signed in.** The `setup` project signs in once through the real
+  email flow (Mailpit) and saves the session to `e2e/.auth/`; the other projects
+  reuse it. A test that signs out or ends a session must use its own user:
+  `test.use(signedOut)` then `signInByEmail(page)`. Set `E2E_SMTP_URL` and
+  `E2E_MAILPIT_URL` to use another Mailpit.
 
 ## Docker
 
@@ -118,12 +137,14 @@ NEXT_PUBLIC_SITE_URL=https://example.com yarn docker:build
 # Apply migrations, then start the app
 docker build --target migrate -t booking-platform-migrate -f docker/Dockerfile .
 docker run --rm -e DATABASE_URL=... booking-platform-migrate
-docker run -p 3000:3000 -e DATABASE_URL=... booking-platform:1.0.0
+docker run -p 3000:3000 -e DATABASE_URL=... -e AUTH_SECRET=... \
+  -e AUTH_URL=https://example.com -e AUTH_EMAIL_SERVER=... -e AUTH_EMAIL_FROM=... \
+  booking-platform:1.0.0
 ```
 
 The image runs the Next.js standalone server on a Node runtime (required for
-SSR and Server Actions) as a non-root user. `DATABASE_URL` is read when the
-container starts. In production, use a managed Postgres and run the migrate image
+SSR and Server Actions) as a non-root user. `DATABASE_URL` and the `AUTH_*`
+variables are read when the container starts, not at build time. In production, use a managed Postgres and run the migrate image
 as a one-off job before each deploy.
 
 ## SEO
@@ -148,11 +169,45 @@ content is still in the HTML, for crawlers that read it. Delete `loading.tsx` if
 route has to work without JavaScript; you lose the skeleton.
 
 Streaming also means the HTTP status is sent before the database answers. If a
-query fails, `/bookings` returns 200 and the browser shows the error page, so
-health checks should use `/api/bookings`, which returns 500.
+query fails, `/bookings` returns 200 and the browser shows the error page. The API
+needs a session, so for a health check that reaches the database, add a small
+public route such as `/api/health`.
 
-## Before using this for real data
+## Authentication
 
-There is no authentication yet. Server Actions and Route Handlers are public
-endpoints, so add auth checks to `src/app/bookings/actions.ts` and
-`src/app/api/bookings` first.
+[Auth.js](https://authjs.dev) v5 (`next-auth`) with its Drizzle adapter. Nobody
+creates an account or a password: people sign in with **Google**, or with a
+**link sent by email**. The first sign-in creates the user. Sessions are rows in
+the `sessions` table, so ending one (for example by deleting it) takes effect
+immediately.
+
+| Variable | Needed for |
+| --- | --- |
+| `AUTH_SECRET` | Always. Signs cookies and tokens. `npx auth secret` |
+| `AUTH_URL` | Always in production. The public address; sign-in links use it, never the request's `Host` header |
+| `AUTH_EMAIL_SERVER`, `AUTH_EMAIL_FROM` | Email links. An SMTP URL such as `smtps://user:pass@smtp.resend.com:465` |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google |
+| `AUTH_ALLOWED_EMAILS` | Optional. Comma-separated addresses and `@domains` allowed to sign in |
+
+- **A provider is on when its variables are set**, and the sign-in page only
+  shows those. Leave Google's unset to use email only, or the reverse.
+- **Google:** in Google Cloud Console, under APIs & Services → Credentials,
+  create an OAuth client ID of type "Web application". Add
+  `${AUTH_URL}/api/auth/callback/google` as an authorised redirect URI (one for
+  `http://localhost:3000` too, for development).
+- **Email:** any SMTP service works, such as Resend, Postmark or Amazon SES.
+  Locally, `yarn mail:up` runs Mailpit, which shows every email instead of
+  sending it. `nodemailer` is on v10 although `next-auth` declares `^7 || ^8`:
+  every 8.x has security advisories, and Auth.js only uses `createTransport` and
+  `sendMail`, which haven't changed. Ignore that peer warning; don't downgrade.
+- **Who can sign in:** by default, anyone who can receive email or has a Google
+  account. Set `AUTH_ALLOWED_EMAILS` (for example `@yourcompany.com`) to limit it.
+- **What's protected:** `/bookings` and its Server Actions send signed-out
+  visitors to `/sign-in`, and `/api/bookings` returns 401. The JSON API uses the
+  same session cookie, so it's meant for the browser, not for scripts.
+- **Bookings are shared:** every signed-in user sees and changes all of them.
+  Add a `user_id` column and filter by `requireUser()`'s id for per-user data.
+- **Protecting new code:** call `requireUser(returnTo)` from `src/lib/session.ts`
+  at the top of each page and Server Action, and `getUser()` in each Route
+  Handler. Check inside each one: a layout or `proxy.ts` check alone doesn't
+  protect a Server Action.

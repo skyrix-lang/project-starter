@@ -21,9 +21,12 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.3",
     "@heroicons/react": "^2.2.0",
     "drizzle-orm": "^0.45.4",
     "next": "^16.4.4",
+    "next-auth": "^5.0.0-beta.32",
+    "nodemailer": "^10.3.1",
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -40,6 +43,8 @@
     "test:report": "playwright show-report",
     "db:up": "sh scripts/db-up.sh",
     "db:down": "docker stop booking-db",
+    "mail:up": "sh scripts/mail-up.sh",
+    "mail:down": "docker stop booking-mail",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",

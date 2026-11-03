@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import type { NavLink as NavLinkType } from "@/types";
+import { UserMenu } from "./UserMenu";
 
 const navLinks: NavLinkType[] = [
   { label: "Home", href: "/" },
@@ -44,7 +45,7 @@ export function Header() {
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1 ml-auto mr-4">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -56,19 +57,22 @@ export function Header() {
             ))}
           </nav>
 
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenuOpen}
-            className="md:hidden p-2 rounded-md text-surface-500 hover:bg-surface-100 cursor-pointer"
-          >
-            {mobileMenuOpen ? (
-              <XMarkIcon className="h-6 w-6" />
-            ) : (
-              <Bars3Icon className="h-6 w-6" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <UserMenu />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+              className="md:hidden p-2 rounded-md text-surface-500 hover:bg-surface-100 cursor-pointer"
+            >
+              {mobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

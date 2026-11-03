@@ -5,8 +5,13 @@ import {
   createBookingSchema,
 } from "@/lib/booking-schema";
 import { createBooking, getBookings } from "@/lib/bookings";
+import { getUser } from "@/lib/session";
 
 export async function GET(request: Request) {
+  if (!(await getUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const status = bookingStatusSchema
     .optional()
@@ -23,6 +28,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!(await getUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => null);
   const input = createBookingSchema.safeParse(body);
 

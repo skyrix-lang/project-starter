@@ -32,17 +32,18 @@ functions that use `getDb()`. Put no HTTP or React code here.
 For UI mutations, add `src/app/<route>/actions.ts` with `"use server"`:
 
 - Validate every argument, because actions are public endpoints.
-- Add an auth check inside each action once auth exists.
+- Call `requireUser(returnTo)` from `src/lib/session.ts` first in each action.
 - Call `revalidatePath` after writing.
 - Return expected failures. Use `useActionState` when a form must show them. Throw
   only for unexpected errors.
-- Use `useFormStatus` for pending state, as in `submit-button.tsx`.
+- Use `useFormStatus` for pending state, as in `src/components/ui/SubmitButton.tsx`.
 
 ## 5. Route Handlers
 
 Add these only if something outside the UI needs the JSON API. See
-`src/app/api/bookings/`: `safeParse` input, return 400 for bad input and 404 for
-unknown records, and call `revalidatePath` after writes.
+`src/app/api/bookings/`: return 401 when `getUser()` is null, `safeParse` input,
+return 400 for bad input and 404 for unknown records, and call `revalidatePath`
+after writes.
 
 ## 6. UI
 
@@ -61,4 +62,4 @@ new route. Keep URL-based state, such as filters, in `searchParams` with `<Link>
 - Run `yarn check`, `yarn lint` and `yarn test`.
 - Break the feature once to confirm the new tests fail, then revert.
 - Update the README for new commands, variables or concepts.
-- Say plainly if the feature handles real data and auth isn't in place.
+- Say plainly if the feature needs per-user data: auth is a sign-in gate only.

@@ -68,9 +68,12 @@ Use the `new-page`, `new-feature` and `seo-check` skills for those tasks.
 
 ## Security
 
-There's no authentication yet. Server Actions and Route Handlers are public
-endpoints, so any feature handling real data needs an auth check inside each one.
-If auth isn't in place yet, say so when finishing the work.
+Auth.js handles sign-in (Google and email links): see "Authentication" in the
+README. Server Actions and Route Handlers are public endpoints, so each one checks
+the session itself. Call `requireUser(returnTo)` from `src/lib/session.ts` in
+pages and Server Actions, and `getUser()` in Route Handlers, returning 401 without
+a user. The root layout stays static, so never call `auth()` in it. Every
+signed-in user can see all bookings, so say so when a feature needs per-user data.
 
 ## Tests
 

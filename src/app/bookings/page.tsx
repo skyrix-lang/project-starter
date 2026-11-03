@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { Card } from "@/components/ui/Card";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { bookingStatusSchema } from "@/lib/booking-schema";
 import { getBookings } from "@/lib/bookings";
+import { requireUser } from "@/lib/session";
 import type { BookingStatus } from "@/types";
 import { confirmBooking, cancelBooking } from "./actions";
 import { FilterBar } from "./filter-bar";
-import { SubmitButton } from "./submit-button";
 
 export const metadata: Metadata = {
   title: "Bookings",
@@ -26,6 +27,9 @@ export default async function BookingsPage({
 }) {
   const { status } = await searchParams;
   const parsed = bookingStatusSchema.safeParse(status);
+  await requireUser(
+    parsed.data ? `/bookings?status=${parsed.data}` : "/bookings",
+  );
   const bookings = await getBookings(parsed.data);
 
   return (

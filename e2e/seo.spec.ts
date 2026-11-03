@@ -75,6 +75,24 @@ test("the bookings page isn't indexed", async ({ page }) => {
   );
 });
 
+for (const path of ["/sign-in", "/sign-in/check-email"]) {
+  test(`${path} isn't indexed`, async ({ browser }) => {
+    // Signed out: a signed-in visitor is sent on from /sign-in.
+    const context = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
+    });
+    const page = await context.newPage();
+    await page.goto(path);
+
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      /noindex/,
+    );
+    await expect(page.locator("h1")).toHaveCount(1);
+    await context.close();
+  });
+}
+
 test("robots.txt allows the site and points to the sitemap", async ({
   request,
 }) => {
@@ -92,6 +110,7 @@ test("the sitemap lists public pages only", async ({ request }) => {
   const sitemap = await response.text();
   expect(sitemap).toContain(`<loc>${SITE_URL}</loc>`);
   expect(sitemap).not.toContain("/bookings");
+  expect(sitemap).not.toContain("/sign-in");
 });
 
 test("sends security headers", async ({ request }) => {

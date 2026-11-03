@@ -134,3 +134,30 @@ test.describe("PATCH /api/bookings/:id", () => {
     });
   }
 });
+
+test.describe("without a session", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("GET returns 401", async ({ request }) => {
+    const response = await request.get("/api/bookings");
+
+    expect(response.status()).toBe(401);
+  });
+
+  test("POST returns 401 and creates nothing", async ({ request }) => {
+    const response = await request.post("/api/bookings", {
+      data: validBooking,
+    });
+
+    expect(response.status()).toBe(401);
+  });
+
+  test("PATCH returns 401", async ({ request }) => {
+    const response = await request.patch(
+      "/api/bookings/00000000-0000-4000-8000-000000000000",
+      { data: { status: "confirmed" } },
+    );
+
+    expect(response.status()).toBe(401);
+  });
+});
