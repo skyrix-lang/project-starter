@@ -10,7 +10,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
-// A relative import: drizzle-kit doesn't resolve the "@/" alias.
 import { BOOKING_STATUSES } from "@/types";
 
 export const bookingStatus = pgEnum("booking_status", BOOKING_STATUSES);

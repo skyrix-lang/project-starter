@@ -48,7 +48,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
-    "check": "echo '[check] Running compilation...'; tsc --noEmit && echo '[check] Compilation succeeded without errors.' && exit 0 || echo '[check] Compilation failed, please check.' && exit 1",
+    "check": "tsc --noEmit",
     "clean": "rm -rf .next out",
     "docker:build": "docker build --no-cache --build-arg NEXT_PUBLIC_SITE_URL -t $npm_package_name:$npm_package_version -f docker/Dockerfile .",
     "format": "oxfmt",

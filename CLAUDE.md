@@ -60,7 +60,6 @@ Use the `new-page`, `new-feature` and `seo-check` skills for those tasks.
 - Migrations are like Flyway: edit `src/lib/db/schema.ts`, run `yarn db:generate`,
   review the SQL, commit it. Never edit an applied migration. The app never
   migrates on startup.
-- `schema.ts` can't use the `@/` alias, because drizzle-kit doesn't resolve it.
 
 ## Environment
 

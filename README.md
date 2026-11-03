@@ -44,7 +44,6 @@ src/
   lib/session.ts                getUser() / requireUser() for pages, actions, routes
   lib/db/                       Drizzle schema, connection and demo data
   components/                   layout + UI components
-  hooks/                        reusable client hooks
   types/                        shared types
 drizzle/                        SQL migrations
 scripts/                        database helper scripts

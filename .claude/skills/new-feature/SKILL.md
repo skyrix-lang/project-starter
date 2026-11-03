@@ -10,7 +10,7 @@ Work from the database up, and include only the layers the feature needs.
 
 ## 1. Database
 
-1. Edit `src/lib/db/schema.ts`, using real column types and relative imports.
+1. Edit `src/lib/db/schema.ts`, using real column types.
 2. Run `yarn db:up`, then `yarn db:generate --name=<what_changed>`.
 3. Read the SQL in `drizzle/`. Check that existing rows survive it: a new
    `NOT NULL` column needs a default, and a rename can be generated as drop and add.
