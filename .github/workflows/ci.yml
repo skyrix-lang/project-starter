@@ -28,10 +28,8 @@ jobs:
           node-version-file: .nvmrc
           cache: yarn
       - run: yarn install --immutable
-      - run: yarn format:check
-      - run: yarn check
-      - run: yarn lint
-      - run: yarn test:unit
+      # Format check, types, lint and unit tests: what agents run after each step.
+      - run: yarn verify
 
   e2e:
     name: Playwright

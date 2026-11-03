@@ -22,9 +22,12 @@ playwright-report/
 # IDE
 .idea
 
-# Claude
+# Claude: shared setup is committed, personal settings are not
 .claude/*
 !.claude/skills/
+!.claude/agents/
+!.claude/hooks/
+!.claude/settings.json
 
 # Environment
 .env

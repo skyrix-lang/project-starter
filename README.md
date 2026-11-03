@@ -53,10 +53,15 @@ src/
   components/                   layout + UI components
   types/                        shared types
 drizzle/                        SQL migrations
-scripts/                        database helper scripts
+scripts/                        setup, dev, session and database scripts
 e2e/                            Playwright tests
 src/**/*.test.ts                unit tests (node:test)
-.github/                        CI workflow and Dependabot
+.github/                        CI workflow, Dependabot, pull request template
+docs/decisions.md               decisions and their reasons
+docs/specs/                     feature specs, and the template
+AGENTS.md, CLAUDE.md            the guide for coding agents
+.claude/                        skills, reviewer subagent, hooks, shared settings
+.mcp.json                       Next.js MCP server for agents
 ```
 
 ## Getting started
@@ -65,22 +70,24 @@ Needs Node 22 and Docker.
 
 ```bash
 yarn install
-cp .env.example .env
-yarn db:up        # start Postgres in Docker
-yarn mail:up      # start Mailpit, which catches sign-in emails
-yarn db:migrate   # create the tables
+yarn setup        # .env with a random AUTH_SECRET, Postgres, Mailpit, migrations
 yarn dev
 ```
 
-Set `AUTH_SECRET` in `.env` (`npx auth secret` prints one). To sign in, enter any
-email on `/sign-in` and open the link at http://localhost:8025. Bookings belong
+`yarn setup` is safe to run again: it never overwrites `.env` or drops data. To
+sign in, enter any email on `/sign-in` and open the link at
+http://localhost:8025, or skip the email with `yarn dev:session you@example.test`,
+which prints a session cookie for the local database. Bookings belong
 to the user who creates them, so to see demo data, sign in once, then run
 `yarn db:seed you@example.com` with that address.
 
 ## Scripts
 
 ```bash
-yarn dev      # start the dev server (Turbopack) on http://localhost:3000
+yarn setup    # prepare a checkout: .env, Postgres, Mailpit, migrations
+yarn dev      # start the dev server (Turbopack) on http://localhost:3000, or PORT from .env
+yarn dev:session [email] [--seed]  # sign in locally without email; prints the cookie
+yarn verify   # format:check + check + lint + test:unit: the quick gate
 yarn build    # production build (emits .next/standalone with assets)
 yarn start    # run the standalone production server
 yarn check    # type-check with tsc --noEmit
@@ -130,10 +137,12 @@ yarn test:report       # open the last HTML report
 yarn test e2e/api.spec.ts --project=api   # run one file
 ```
 
-`yarn test` starts Postgres, builds the app and runs the production server on
-port 3100, so a running `yarn dev` is not affected. Each run drops and recreates a
-separate `booking_e2e` database, never the one in `.env`. To use another server,
-for example in CI, set `E2E_DATABASE_URL`; its database name must end in `_e2e`.
+`yarn test` starts Postgres, builds the app and runs the production server on its
+own port, so a running `yarn dev` is not affected. Each run drops and recreates
+its own `booking_<n>_e2e` database, never the one in `.env`. The port (3100–3999)
+and `<n>` come from the checkout's directory (`scripts/checkout.ts`), so test runs
+in different worktrees don't collide. Set `E2E_PORT` or `E2E_DATABASE_URL` to
+choose them; the database name must end in `_e2e`.
 
 - **Projects:** `api` tests the Route Handlers without a browser. `desktop` and
   `mobile` run every browser test at both sizes.
@@ -155,13 +164,47 @@ for example in CI, set `E2E_DATABASE_URL`; its database name must end in `_e2e`.
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`.
-One job runs `yarn format:check`, `yarn check`, `yarn lint` and
-`yarn test:unit`. The other runs
+One job runs `yarn verify`. The other runs
 `yarn test`, which starts Postgres and Mailpit in Docker on the runner, just as it
 does locally. With `CI` set, Playwright retries a failed test twice and fails on
 `test.only`. The HTML report is uploaded as the `playwright-report` artifact.
 Dependabot (`.github/dependabot.yml`) opens weekly update pull requests for
 dependencies, GitHub Actions and the Docker image, and CI runs on each of them.
+
+## Working with AI agents
+
+The project is set up so coding agents (Claude Code, Codex, Cursor, Copilot…)
+can build features on their own and check their work.
+
+- **`AGENTS.md` is the guide** every agent reads at the start of a session: the
+  rules, the workflow and what "done" means. `CLAUDE.md` imports it and adds
+  Claude Code specifics. Next.js keeps its own block at the top of `AGENTS.md`
+  pointing to the docs for the installed version: leave it there.
+- **Workflows** are in `.claude/skills/`: `new-feature`, `new-page`, `seo-check`
+  and `run-app`. They're plain Markdown, so agents without skill support can
+  follow them too.
+- **Decisions and specs:** `docs/decisions.md` records what was chosen and why,
+  so agents don't undo it. Bigger features start as a spec in `docs/specs/`.
+- **Fast feedback:** `yarn verify` takes a few seconds; `yarn test` about a
+  minute. CI runs both.
+- **Seeing the app:** `yarn dev:session` signs in without email, and the
+  `next-devtools` MCP server (`.mcp.json`) reads the dev server's errors, routes
+  and logs. Claude Code asks once before enabling it.
+- **Guardrails** (Claude Code, `.claude/settings.json`): hooks format every edited
+  file and refuse edits to committed migrations, `.env` files and `yarn.lock`.
+  `.env` can't be read, and force pushes are denied. Common commands such as
+  `yarn verify` and `yarn test` run without asking. Personal overrides go in
+  `.claude/settings.local.json`, which isn't committed.
+- **Review:** the `reviewer` subagent checks a change against the rules with
+  fresh context.
+- **Parallel agents:** give each task its own git worktree, then run
+  `yarn install && yarn setup` in it. A worktree gets its own dev port, dev
+  database, test port and test database; Postgres and Mailpit are shared.
+
+```bash
+git worktree add ../booking-invoices -b invoices
+cd ../booking-invoices && yarn install && yarn setup && yarn dev
+```
 
 ## Docker
 

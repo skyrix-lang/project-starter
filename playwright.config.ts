@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 import { SIGNED_IN_STATE } from "./e2e/auth-state";
+import { databaseNames, e2ePort } from "./scripts/checkout";
 
-const PORT = 3100;
+// Each checkout, such as an agent's git worktree, gets its own port and test
+// database, so test runs in different checkouts can happen at once.
+const PORT = Number(process.env.E2E_PORT ?? e2ePort());
 const HOST = "127.0.0.1";
 // Next.js reports a 127.0.0.1 request as coming from "localhost", so Auth.js
 // builds its redirects with that name. The browser uses it too, so cookies and
@@ -12,7 +15,7 @@ const BASE_URL = `http://localhost:${PORT}`;
 // process.env so the server, and the test workers, use it instead of .env.
 process.env.DATABASE_URL =
   process.env.E2E_DATABASE_URL ??
-  "postgres://booking:booking@localhost:5432/booking_e2e";
+  `postgres://booking:booking@localhost:5432/${databaseNames().e2e}`;
 
 process.env.NEXT_PUBLIC_SITE_URL = "https://bookinghub.test";
 

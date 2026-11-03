@@ -5,6 +5,10 @@ description: Build a full-stack feature in this project across the database, dat
 
 # Build a feature
 
+If the feature is bigger than one screen, changes existing data, or has open
+product questions, write a spec in `docs/specs/` first and get the open questions
+answered.
+
 Work from the database up, and include only the layers the feature needs.
 `src/app/bookings/` and `src/lib/bookings.ts` show every layer.
 
@@ -63,7 +67,9 @@ new route. Keep URL-based state, such as filters, in `searchParams` with `<Link>
 
 ## 8. Finish
 
-- Run `yarn format`, then `yarn check`, `yarn lint`, `yarn test:unit` and `yarn test`.
+- Run `yarn verify` and `yarn test`.
 - Break the feature once to confirm the new tests fail, then revert.
+- Check it in the running app with the `run-app` skill.
+- Have the change reviewed (the `reviewer` subagent in Claude Code).
 - Update the README for new commands, variables or concepts.
 - Say plainly whether the new data is per user or shared by everyone.

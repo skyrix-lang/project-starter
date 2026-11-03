@@ -33,7 +33,7 @@
     "zod": "^4.6.7"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "sh scripts/dev.sh",
     "build": "next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static",
     "start": "node --env-file-if-exists=.env .next/standalone/server.js",
     "lint": "oxlint --deny-warnings",
@@ -53,6 +53,9 @@
     "docker:build": "docker build --no-cache --build-arg NEXT_PUBLIC_SITE_URL -t $npm_package_name:$npm_package_version -f docker/Dockerfile .",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "test:unit": "tsx --conditions=react-server --test 'src/**/*.test.ts'"
+    "test:unit": "tsx --conditions=react-server --test 'src/**/*.test.ts'",
+    "setup": "tsx scripts/setup.ts",
+    "verify": "yarn format:check && yarn check && yarn lint && yarn test:unit",
+    "dev:session": "tsx scripts/dev-session.ts"
   }
 }
