@@ -12,6 +12,7 @@ export default defineConfig({
           include: [
             "packages/{core,db}/src/**/*.test.ts",
             "apps/bff/src/**/*.test.ts",
+            "scripts/**/*.test.ts",
           ],
         },
       },

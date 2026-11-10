@@ -4,8 +4,10 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
+import { requestId, type RequestIdVariables } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { env } from "./env";
+import { log, withLogContext } from "./log";
 import { api, openApiDocument } from "./routes/api";
 import { authRoutes } from "./routes/auth";
 import { robotsTxt, sitemapXml } from "./seo";
@@ -16,7 +18,27 @@ import { robotsTxt, sitemapXml } from "./seo";
  */
 export function createApp() {
   const { PUBLIC_URL, OIDC_ISSUER, STATIC_DIR } = env();
-  const app = new Hono();
+  const app = new Hono<{ Variables: RequestIdVariables }>();
+
+  // Every request gets an id (the proxy's `x-request-id` when it sent one),
+  // returned in the response and added to each line logged while handling it,
+  // so one request's lines can be found together. Then one line per request,
+  // with the path only: a query string can carry a sign-in code.
+  app.use(requestId());
+  app.use(async (c, next) => {
+    const started = performance.now();
+    await withLogContext({ requestId: c.var.requestId }, next);
+    const { status } = c.res;
+    // The platform probes this every few seconds: only failures are news.
+    if (c.req.path === "/api/health" && status === 200) return;
+    log[status >= 500 ? "error" : "info"]("Request", {
+      requestId: c.var.requestId,
+      method: c.req.method,
+      path: c.req.path,
+      status,
+      durationMs: Math.round(performance.now() - started),
+    });
+  });
 
   app.use(
     secureHeaders({
@@ -95,7 +117,7 @@ export function createApp() {
     if (error instanceof HTTPException) {
       return c.json({ error: error.message }, error.status);
     }
-    console.error(error);
+    log.error("Unhandled error", { error });
     return c.json({ error: "Internal server error" }, 500);
   });
 

@@ -137,3 +137,34 @@ database. A git worktree gets its own dev ports, dev database and e2e port and
 database (`scripts/checkout.ts`, `yarn setup`). Postgres and Keycloak are shared.
 **Why:** several agents can work in parallel worktrees without one's migrations or
 test reset breaking another's.
+
+## Node 24, pinned in three places
+
+`.nvmrc` (local and CI), the base image in `docker/Dockerfile` (by digest) and
+the BFF's build target in `apps/bff/vite.config.ts` name the same major version.
+**Why:** an even-numbered release in long-term support, with security fixes
+until April 2028, and it still ships Corepack, which provides Yarn.
+**Revisit when:** moving to Node 26 or later: Corepack is no longer bundled, so
+the image and CI must install it (or Yarn) themselves. Change all three together.
+
+## Structured logs on stdout, without a library
+
+`apps/bff/src/log.ts` writes one JSON line per event in production and text in
+development, with a request id carried by `AsyncLocalStorage` and returned as
+`x-request-id`. Requests are logged with their path only, and errors with their
+message, code and stack only.
+**Why:** a container's platform collects stdout and can filter JSON by level or
+request id; a query string can carry a sign-in code, and libraries attach
+query parameters and token responses to their errors; and one small file needs
+no dependency.
+**Revisit when:** traces or metrics are needed, or a second service must share
+a request's id: add OpenTelemetry then, and keep `log` as the one entry point.
+
+## Compose file for trying the image, not for production
+
+`docker/compose.yaml` runs the image with Postgres, the migration stage and a
+development Keycloak, in deploy order. Keycloak is reached as
+`keycloak.localhost` on the same port by the browser and by the app, because
+the issuer must be one address for both.
+**Why:** the image is what ships, so there must be a one-command way to run it
+as it runs in production. Its secrets are public: it is not a deployment.

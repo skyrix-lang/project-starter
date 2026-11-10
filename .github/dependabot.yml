@@ -23,6 +23,13 @@ updates:
       actions:
         patterns: ["*"]
 
+  # Postgres and Keycloak in docker/compose.yaml. Keep scripts/db-up.sh and
+  # scripts/keycloak-up.sh on the same versions.
+  - package-ecosystem: docker-compose
+    directory: /docker
+    schedule:
+      interval: weekly
+
   - package-ecosystem: docker
     directory: /docker
     schedule:

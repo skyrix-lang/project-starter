@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     ssr: "src/server.ts",
     outDir: "dist",
-    target: "node22",
+    target: "node24",
     sourcemap: true,
   },
   ssr: {

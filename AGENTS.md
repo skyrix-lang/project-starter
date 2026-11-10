@@ -99,6 +99,9 @@ databases.
 - Routes on `userApi` check the session (401). A route outside it is public: say
   why in a comment. Data is per user: pass `c.var.user.id` to every data
   function, which filters by it, as `apps/bff/src/bookings.ts` does.
+- Log with `log` from `apps/bff/src/log.ts`, never `console`: one line per
+  event, with the request's id added for you. Never log a secret, a token, a
+  cookie or a query string.
 - Limit anything that sends email or costs money with `hit()` from
   `apps/bff/src/rate-limit.ts`.
 - Migrations are like Flyway: edit `packages/db/src/schema.ts`, run

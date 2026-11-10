@@ -3,6 +3,7 @@ import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
 import { safeReturnTo } from "@booking/core";
 import { clientIp } from "../client-ip";
 import { env } from "../env";
+import { log } from "../log";
 import { callbackUrl, client, oidcConfig } from "../oidc";
 import { hit, type RateLimit } from "../rate-limit";
 import { createSession, endSession, setSessionCookie } from "../session";
@@ -38,7 +39,7 @@ export const authRoutes = new Hono()
     try {
       config = await oidcConfig();
     } catch (error) {
-      console.error("Sign-in: the identity provider is unreachable:", error);
+      log.error("Sign-in: the identity provider is unreachable", { error });
       return c.redirect(failed("Unavailable"));
     }
 
@@ -109,7 +110,7 @@ export const authRoutes = new Hono()
       setSessionCookie(c, session.token, session.expiresAt);
       return c.redirect(flow.returnTo);
     } catch (error) {
-      console.error("Sign-in callback failed:", error);
+      log.error("Sign-in callback failed", { error });
       return c.redirect(failed("Callback"));
     }
   })
@@ -130,7 +131,7 @@ export const authRoutes = new Hono()
           return c.redirect(url.href, 303);
         }
       } catch (error) {
-        console.error("Sign-out: the identity provider is unreachable:", error);
+        log.error("Sign-out: the identity provider is unreachable", { error });
       }
     }
     return c.redirect("/", 303);

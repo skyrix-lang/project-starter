@@ -48,9 +48,22 @@ docs/specs/                 feature specs
 
 Each package has a short `AGENTS.md` with its rules.
 
+## Starting a project from this starter
+
+```bash
+yarn install
+yarn rename acme-portal "Acme Portal"
+```
+
+`yarn rename` replaces the starter's name wherever it's an identifier: the
+`@booking/*` package scope, the root package and image, the local containers,
+database, Keycloak realm and client, and the site name. It leaves the bookings
+feature alone: keep it to copy from, and remove it when the project has its
+own. Review the diff, then continue below.
+
 ## Getting started
 
-Requires Node 22 (`.nvmrc`), Corepack (`corepack enable`) and Docker.
+Requires Node 24 (`.nvmrc`), Corepack (`corepack enable`) and Docker.
 
 ```bash
 yarn install
@@ -77,11 +90,13 @@ origin, as in production.
 | `yarn test:unit` / `yarn test:watch`              | Vitest                                                                    |
 | `yarn api:generate`                               | OpenAPI document from the BFF's routes, then client, hooks and mocks      |
 | `yarn setup`                                      | prepare a checkout or worktree                                            |
+| `yarn rename <name> ["Display Name"]`             | once, in a new project: replace the starter's name everywhere             |
 | `yarn dev:session [email] [--seed]`               | sign in locally without Keycloak, print the cookie                        |
 | `yarn db:generate --name=<x>` / `yarn db:migrate` | new migration / apply migrations                                          |
 | `yarn db:seed <email>`                            | demo bookings for a user who has signed in                                |
 | `yarn db:up` / `yarn keycloak:up`                 | start the local containers                                                |
 | `yarn docker:build`                               | build the image                                                           |
+| `yarn docker:up` / `yarn docker:down`             | the image with Postgres, migrations and Keycloak (Docker Compose)         |
 
 ## Configuration
 
@@ -97,6 +112,7 @@ customer and any domain.
 | `SESSION_SECRET`                                      | signs the short-lived sign-in cookie (32+ random characters in production)                            |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | the identity provider and its confidential client                                                     |
 | `PORT`, `HOST`                                        | where the BFF listens (3000 and 0.0.0.0 in the image)                                                 |
+| `LOG_LEVEL`                                           | `debug`, `info` (default), `warn`, `error` or `silent`                                                |
 | `STATIC_DIR`                                          | the built SPA (set in the image)                                                                      |
 
 ## Authentication
@@ -172,7 +188,26 @@ docker run -p 3000:3000 -e PUBLIC_URL=https://bookings.example.com \
 
 The runtime image holds Node, a single bundled `server.js` and the static
 files: no `node_modules`, no package manager, and it runs as a non-root user.
-Health check: `GET /api/health` (503 when the database is unreachable).
+Its base image is pinned by digest, and Dependabot updates it. The image has a
+`HEALTHCHECK` on `GET /api/health` (503 when the database is unreachable), and
+on `SIGTERM` the server finishes the requests in progress before it exits.
+
+To try the image with everything around it, `yarn docker:up` runs
+`docker/compose.yaml`: Postgres, the migrations, a development Keycloak and
+the app at http://localhost:8080 (ada / ada). It's for local use only, and
+needs a browser that treats `keycloak.localhost` as this machine (Chrome and
+Firefox do; Safari needs a line in `/etc/hosts`).
+
+### Logs
+
+The BFF writes one line per event to stdout, and warnings and errors to
+stderr: JSON in the image, readable text in development. Each request is one
+line with its method, path (never the query string), status and duration,
+except health checks that succeed. Its id is returned as `x-request-id` and
+added to everything logged while handling it; a proxy that sends
+`x-request-id` keeps its own id. Errors are logged with their message, code
+and stack only: query parameters and whatever a library attached to them are
+dropped. Log with `log` from `apps/bff/src/log.ts`; lint refuses `console`.
 
 CI builds the image on `main` and on tags, with an SBOM and build provenance,
 and signs release tags with cosign. See `SECURITY.md`.

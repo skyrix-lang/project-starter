@@ -4,6 +4,10 @@ import { z } from "zod";
 // missing value fails the deploy instead of the first request. Read them with
 // env(), never process.env.
 
+/** From the most to the least verbose; `silent` logs nothing. */
+export const logLevels = ["debug", "info", "warn", "error", "silent"] as const;
+export type LogLevel = (typeof logLevels)[number];
+
 export const envSchema = z
   .object({
     NODE_ENV: z
@@ -21,6 +25,8 @@ export const envSchema = z
     OIDC_ISSUER: z.url(),
     OIDC_CLIENT_ID: z.string().min(1),
     OIDC_CLIENT_SECRET: z.string().min(1),
+    /** The least severe level that is logged (src/log.ts). */
+    LOG_LEVEL: z.enum(logLevels).default("info"),
     /** The built SPA, served in production. Unset in development (Vite serves it). */
     STATIC_DIR: z.string().optional(),
   })

@@ -22,6 +22,12 @@
     "typescript/await-thenable": "error",
     "import/no-cycle": "error"
   },
+  "overrides": [
+    {
+      "files": ["apps/bff/src/**"],
+      "rules": { "no-console": "error" }
+    }
+  ],
   "env": {
     "browser": true,
     "node": true

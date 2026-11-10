@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { createApp as CreateApp } from "./app";
 
 // The parts of the server that need no database: security headers, the CSRF
@@ -15,6 +15,67 @@ beforeAll(async () => {
   vi.stubEnv("OIDC_CLIENT_SECRET", "secret");
   const { createApp } = await import("./app");
   app = createApp();
+});
+
+// Captures what the server logs, which also keeps it out of the test output.
+const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+const text = (stream: typeof stdout) =>
+  stream.mock.calls.map(([line]) => String(line)).join("");
+const logged = () => text(stdout);
+afterEach(() => {
+  stdout.mockClear();
+  stderr.mockClear();
+});
+
+describe("the request log", () => {
+  it("logs each request once, with the id it returns", async () => {
+    const response = await app.request("/robots.txt");
+    const id = response.headers.get("x-request-id");
+
+    expect(id).toBeTruthy();
+    expect(logged().trim().split("\n")).toEqual([
+      expect.stringMatching(
+        new RegExp(
+          `^INFO Request requestId=${id} method=GET path=/robots.txt status=200 durationMs=\\d+$`,
+        ),
+      ),
+    ]);
+  });
+
+  it("keeps the id sent by the proxy in front of it", async () => {
+    const response = await app.request("/robots.txt", {
+      headers: { "x-request-id": "from-the-proxy" },
+    });
+
+    expect(response.headers.get("x-request-id")).toBe("from-the-proxy");
+    expect(logged()).toContain("requestId=from-the-proxy");
+  });
+
+  it("puts the request's id on what is logged while handling it", async () => {
+    // The test database address answers nothing, so the health check fails.
+    const response = await app.request("/api/health", {
+      headers: { "x-request-id": "health-1" },
+    });
+
+    expect(response.status).toBe(503);
+    const lines = text(stderr).split("\n");
+    expect(lines).toContainEqual(
+      expect.stringMatching(
+        /^ERROR Health check: database unreachable requestId=health-1 /,
+      ),
+    );
+    expect(lines).toContainEqual(
+      expect.stringMatching(/^ERROR Request requestId=health-1 .* status=503 /),
+    );
+  });
+
+  it("leaves the query string out: it can carry a sign-in code", async () => {
+    await app.request("/robots.txt?code=one-time-secret");
+
+    expect(logged()).toContain("path=/robots.txt status=200");
+    expect(logged()).not.toContain("one-time-secret");
+  });
 });
 
 describe("the API", () => {
