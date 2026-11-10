@@ -196,7 +196,7 @@ export const KEYCLOAK_USERS = {
   },
 } as const;
 
-/** A user as they were before OIDC: an email, no identity, and one booking. */
+/** A user created ahead of their first sign-in: an email, no identity, one booking. */
 export async function createUserWithBooking(email: string, title: string) {
   await withDatabase(async (db) => {
     const { rows } = await db.query<{ id: string }>(

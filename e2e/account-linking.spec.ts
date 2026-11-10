@@ -8,10 +8,10 @@ import {
   test,
 } from "./support";
 
-// apps/bff/src/users.ts: someone who existed before signing in with OIDC (from
-// the old sign-in, or `yarn dev:session`) keeps their data, but only when the
-// provider has verified the email. Each case uses its own Keycloak user, and
-// runs once: the first sign-in is the one that links.
+// apps/bff/src/users.ts: a user created ahead of their first sign-in (by
+// `yarn dev:session`, or by email in advance) keeps their data, but only when
+// the provider has verified the email. Each case uses its own Keycloak user,
+// and runs once: the first sign-in is the one that links.
 test.describe.configure({ mode: "serial" });
 test.use(signedOut);
 
@@ -20,7 +20,7 @@ test("a verified email links to the existing user and their bookings", async ({
   isMobile,
 }) => {
   test.skip(isMobile, "the first sign-in links; run it once");
-  const title = "Booked before OIDC";
+  const title = "Booked before signing in";
   await createUserWithBooking(KEYCLOAK_USERS.linus.email, title);
 
   await page.goto("/auth/login?returnTo=/bookings");

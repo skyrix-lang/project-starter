@@ -1,7 +1,7 @@
 # Project guide
 
-A booking platform starter, shaped to be sold to companies as **versioned
-packages plus a thin app per customer**: a client-only React 19 SPA (Vite,
+A full-stack starter for new projects, organized as **versioned packages plus a
+thin app per customer**: a client-only React 19 SPA (Vite,
 TanStack Router and Query, shadcn/ui on Base UI, Tailwind v4, React Hook Form,
 Zod 4) and a small Hono backend-for-frontend (BFF) that owns sign-in (OpenID
 Connect), sessions, the JSON API and Postgres (Drizzle). One Docker image.

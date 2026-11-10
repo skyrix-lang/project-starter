@@ -1,7 +1,8 @@
 # booking-platform
 
-A booking platform starter built to be sold to companies: **versioned packages
-plus a thin app per customer**, shipped as one Docker image.
+A full-stack starter for new projects, organized as **versioned packages plus a
+thin app per customer** and shipped as one Docker image. A small bookings
+feature shows every layer; copy its patterns, then replace it with your own.
 
 - **Web:** React 19 single-page app with strict TypeScript and Vite. TanStack
   Router for typed routes and TanStack Query for server data. shadcn/ui-style
@@ -65,11 +66,6 @@ admin console is at http://localhost:8180 (admin / admin).
 Vite forwards `/api` and `/auth` to the BFF, so the browser sees a single
 origin, as in production.
 
-**Upgrading an existing checkout:** add the new variables from `.env.example`
-to your `.env`: `PUBLIC_URL`, `SESSION_SECRET`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`
-and `OIDC_CLIENT_SECRET`. Remove the `AUTH_*` and `NEXT_PUBLIC_*` variables.
-Then run `yarn db:migrate`.
-
 ## Scripts
 
 | Command                                           | What it does                                                              |
@@ -116,8 +112,9 @@ others. Create a **confidential** client with:
 The browser never sees a token or the client secret. After the callback, the
 BFF stores a session row and sets an HttpOnly cookie, so deleting the row
 signs that session out. Signing out also ends the provider's session. Users
-are identified by issuer and subject. A user from before the move to OIDC, with
-the same verified email, keeps their data.
+are identified by issuer and subject. A user created ahead of their first
+sign-in, by email and with no identity yet (as `yarn dev:session` does), is
+linked to it when the provider has verified that email.
 
 Who may sign in is decided by the provider: every account it accepts gets in.
 Use the customer's own provider, or restrict a shared one to their users,

@@ -11,10 +11,10 @@ export interface Identity {
 }
 
 /**
- * The user for this identity, created on first sign-in. A user who existed
- * before with the same verified email, but no identity yet (from an earlier
- * sign-in method, or `yarn dev:session`), is linked rather than duplicated, so
- * they keep their data.
+ * The user for this identity, created on first sign-in. A user created ahead
+ * of it with the same verified email but no identity yet (by `yarn
+ * dev:session`, or set up in advance by email) is linked rather than
+ * duplicated, so they keep their data.
  */
 export async function upsertUser(identity: Identity): Promise<string> {
   const db = getDb();

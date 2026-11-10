@@ -11,7 +11,7 @@ export const envSchema = z
       .default("development"),
     PORT: z.coerce.number().int().positive().default(3001),
     HOST: z.string().default("0.0.0.0"),
-    /** The address people use, such as https://shop.example.com. */
+    /** The address people use, such as https://bookings.example.com. */
     PUBLIC_URL: z
       .url({ protocol: /^https?$/ })
       .transform((url) => url.replace(/\/$/, "")),
