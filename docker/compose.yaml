@@ -39,7 +39,7 @@ services:
   # address, since that address is the issuer. `keycloak.localhost` is this
   # machine for a browser and this container for the app, on the same port.
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4
+    image: quay.io/keycloak/keycloak:26.8
     command: start-dev --import-realm --http-port=8280
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
