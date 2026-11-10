@@ -1,0 +1,37 @@
+/*
+ * The default brand. A customer's theme package redefines these variables and
+ * nothing else: components only use the tokens (packages/ui/src/styles.css).
+ * Keep text colours at WCAG 2.2 AA contrast (4.5:1) against their background:
+ * the e2e axe checks fail otherwise.
+ */
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 0.5rem;
+
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #3b82f6;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --primary-soft: #eff6ff;
+  --primary-soft-foreground: #1d4ed8;
+
+  --secondary: #ffffff;
+  --secondary-foreground: #334155;
+
+  --success-soft: #dcfce7;
+  --success-soft-foreground: #15803d;
+  --warning-soft: #fef3c7;
+  --warning-soft-foreground: #b45309;
+  --destructive: #dc2626;
+  --destructive-soft: #fee2e2;
+  --destructive-soft-foreground: #b91c1c;
+}

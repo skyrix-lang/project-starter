@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@import "@booking/ui/styles.css";
+/* The customer's brand: swap this one import for their theme package. */
+@import "@booking/theme-default/theme.css";
+
+/* Tailwind only scans this app by default; the packages hold components too. */
+@source "../../../packages";
+
+html {
+  scroll-behavior: smooth;
+}

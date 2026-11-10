@@ -1,12 +1,10 @@
 .git
-.next
 .claude
 .idea
-.turbo
 .yarn/cache
 .yarn/install-state.gz
-node_modules
-out
+**/node_modules
+**/dist
 e2e
 playwright.config.ts
 test-results

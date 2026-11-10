@@ -37,7 +37,8 @@ New tables or columns, and what happens to existing rows in the migration.
 
 ## Pages and API
 
-Each new or changed route: public or app page, Server Action or Route Handler.
+Each new or changed route: public or app page in `apps/web`, and each API route
+in `apps/bff` (method, path, who may call it, error statuses).
 
 ## Out of scope
 

@@ -1,12 +1,14 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { test } from "@playwright/test";
 import { SHARED_USER_EMAIL, SIGNED_IN_STATE } from "./auth-state";
-import { signInByEmail, test } from "./support";
+import { createSessionFor } from "./support";
 
-// Signs in once; the other projects reuse the session. Tests that sign out, or
-// end a session, sign in as their own user so this one stays valid.
-test("sign in", async ({ page }) => {
-  await signInByEmail(page, { email: SHARED_USER_EMAIL });
+// Signs in once, by writing a session row; the other projects reuse it. The
+// real Keycloak sign-in is tested in auth.spec.ts. Tests that sign out, or end
+// a session, sign in as their own user so this one stays valid.
+test("sign in", async ({ baseURL }) => {
+  const state = await createSessionFor(SHARED_USER_EMAIL, baseURL!);
   await mkdir(dirname(SIGNED_IN_STATE), { recursive: true });
-  await page.context().storageState({ path: SIGNED_IN_STATE });
+  await writeFile(SIGNED_IN_STATE, JSON.stringify(state));
 });

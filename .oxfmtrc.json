@@ -4,5 +4,11 @@
   "tabWidth": 2,
   "printWidth": 80,
   "sortPackageJson": false,
-  "ignorePatterns": ["drizzle/meta"]
+  "ignorePatterns": [
+    "packages/db/drizzle/meta",
+    "packages/api/src/generated",
+    "packages/api/openapi.json",
+    "**/routeTree.gen.ts",
+    "**/dist"
+  ]
 }

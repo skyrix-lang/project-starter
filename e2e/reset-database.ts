@@ -1,8 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client } from "pg";
-import { users } from "@/lib/db/schema";
-import { seedBookings } from "@/lib/db/seed";
+import { users } from "@booking/db";
+import { seedBookings } from "@booking/db/seed";
 import { SHARED_USER_EMAIL } from "./auth-state";
 
 // Recreates the test database, so every run starts from the same state.
@@ -22,14 +22,16 @@ async function main() {
   await admin.end();
 
   const db = drizzle(url.href);
-  await migrate(db, { migrationsFolder: "drizzle" });
-  // Signing in by email links to this user, as it would to anyone who exists.
+  await migrate(db, { migrationsFolder: "packages/db/drizzle" });
   const [user] = await db
     .insert(users)
     .values({ email: SHARED_USER_EMAIL })
     .returning();
-  await seedBookings(db, user.id);
+  await seedBookings(db, user!.id);
   await db.$client.end();
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

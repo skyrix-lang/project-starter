@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      What crawlers and link previews read before JavaScript runs. %PUBLIC_URL%
+      is replaced with the site's address when the BFF serves this file.
+      Pages set their own title once the app has loaded (src/page-meta.ts).
+    -->
+    <title>BookingHub</title>
+    <meta
+      name="description"
+      content="The simplest way to manage your bookings. Schedule, track, and organize all your appointments in one place."
+    />
+    <link rel="canonical" href="%PUBLIC_URL%/" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BookingHub" />
+    <meta property="og:title" content="BookingHub" />
+    <meta
+      property="og:description"
+      content="The simplest way to manage your bookings."
+    />
+    <meta property="og:url" content="%PUBLIC_URL%/" />
+    <meta name="twitter:card" content="summary" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "BookingHub",
+        "url": "%PUBLIC_URL%",
+        "description": "The simplest way to manage your bookings. Schedule, track, and organize all your appointments in one place."
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

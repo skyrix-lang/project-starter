@@ -1,12 +1,11 @@
-import { loadEnvConfig } from "@next/env";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { seedBookings } from "@/lib/db/seed";
-import { users } from "@/lib/db/schema";
+import { users } from "@booking/db";
+import { seedBookings } from "@booking/db/seed";
+import { loadEnv } from "./env";
 
 // yarn db:seed <email>: gives that user the demo bookings. They must have signed
-// in once, so the user exists: creating it here would stop Google sign-in from
-// linking to it.
+// in once, so the user exists and is linked to their identity.
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase();
   if (!email) {
@@ -14,7 +13,7 @@ async function main() {
     process.exit(1);
   }
 
-  loadEnvConfig(process.cwd());
+  loadEnv();
   const db = drizzle(process.env.DATABASE_URL!);
   try {
     const [user] = await db
@@ -35,4 +34,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

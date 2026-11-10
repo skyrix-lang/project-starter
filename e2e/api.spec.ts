@@ -1,6 +1,5 @@
-import { expect, test } from "@playwright/test";
-import type { Booking } from "@/types";
-import { createBooking } from "./support";
+import type { Booking } from "@booking/core";
+import { createBooking, expect, test } from "./support";
 
 const validBooking = {
   title: "Dentist",
@@ -35,6 +34,12 @@ test.describe("GET /api/bookings", () => {
 
     expect(response.status()).toBe(400);
   });
+
+  test("isn't cached", async ({ request }) => {
+    const response = await request.get("/api/bookings");
+
+    expect(response.headers()["cache-control"]).toContain("no-store");
+  });
 });
 
 test.describe("POST /api/bookings", () => {
@@ -68,6 +73,25 @@ test.describe("POST /api/bookings", () => {
     expect(response.status()).toBe(400);
   });
 
+  test("rejects a body that isn't JSON", async ({ request, baseURL }) => {
+    const response = await request.post("/api/bookings", {
+      headers: { "content-type": "text/plain", origin: baseURL! },
+      data: JSON.stringify(validBooking),
+    });
+
+    expect(response.status()).toBe(415);
+  });
+
+  // text/plain is a type that a form on another site can send without CORS.
+  test("refuses a cross-site form-like post", async ({ request }) => {
+    const response = await request.post("/api/bookings", {
+      headers: { "content-type": "text/plain", origin: "https://evil.example" },
+      data: JSON.stringify(validBooking),
+    });
+
+    expect(response.status()).toBe(403);
+  });
+
   const invalidBookings = {
     "an empty title": { title: "   " },
     "an invalid date": { date: "2030-13-45" },
@@ -84,6 +108,9 @@ test.describe("POST /api/bookings", () => {
       });
 
       expect(response.status()).toBe(400);
+      expect(await response.json()).toMatchObject({
+        error: "Invalid request",
+      });
     });
   }
 });
@@ -162,6 +189,13 @@ test.describe("without a session", () => {
 
     expect(response.status()).toBe(401);
   });
+
+  test("/api/me says nobody is signed in", async ({ request }) => {
+    const response = await request.get("/api/me");
+
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({ user: null });
+  });
 });
 
 test.describe("GET /api/health", () => {
@@ -192,14 +226,21 @@ test("bookings in the API don't expose their owner", async ({ request }) => {
   ]);
 });
 
-test("the session sent to the browser holds no token", async ({ request }) => {
-  const session = await (await request.get("/api/auth/session")).json();
+test("/api/me holds no token or id", async ({ request }) => {
+  const me = await (await request.get("/api/me")).json();
 
-  expect(Object.keys(session).sort()).toEqual(["expires", "user"]);
-  expect(Object.keys(session.user).sort()).toEqual([
-    "email",
-    "id",
-    "image",
-    "name",
+  expect(me).toEqual({
+    user: { email: "e2e-shared@example.test", name: null },
+  });
+});
+
+test("the API document lists every route", async ({ request }) => {
+  const document = await (await request.get("/api/openapi.json")).json();
+
+  expect(Object.keys(document.paths).sort()).toEqual([
+    "/api/bookings",
+    "/api/bookings/{id}",
+    "/api/health",
+    "/api/me",
   ]);
 });

@@ -1,11 +1,11 @@
 #!/bin/sh
-# Starts the dev server. `next dev` reads PORT from the environment but not from
-# .env, so a PORT set there (as `yarn setup` does in a git worktree) is passed on.
+# yarn dev: the BFF (restarting on change) and the Vite dev server together.
+# Open PUBLIC_URL (http://localhost:3000): Vite forwards /api and /auth to the BFF.
+# Ctrl-C stops both.
 set -e
 
-port=""
-if [ -f .env ]; then
-  port=$(sed -n 's/^PORT=//p' .env | tail -n 1)
-fi
+yarn workspace @booking/bff dev &
+bff=$!
+trap 'kill $bff 2>/dev/null' EXIT INT TERM
 
-exec next dev ${port:+--port "$port"} "$@"
+yarn workspace @booking/web dev

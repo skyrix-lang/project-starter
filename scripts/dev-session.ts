@@ -1,13 +1,16 @@
-import { randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { loadEnvConfig } from "@next/env";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { sessions, users } from "@/lib/db/schema";
-import { seedBookings } from "@/lib/db/seed";
+import { seedBookings } from "@booking/db/seed";
+import { loadEnv } from "./env";
+import {
+  createLocalSession,
+  LOCAL_SESSION_COOKIE,
+  storageState,
+} from "./local-session";
 
-// yarn dev:session [email] [--seed]: signs a user in without the email round
-// trip, for an agent or a person checking the running dev server. It writes a
-// session row, as Auth.js would, and prints the cookie. Local databases only.
+// yarn dev:session [email] [--seed]: signs a user in without Keycloak, for an
+// agent or a person checking the running dev server, and prints the cookie.
+// Local databases and http:// only.
 
 const STATE_FILE = "e2e/.auth/dev-session.json";
 
@@ -20,56 +23,31 @@ async function main() {
     .trim()
     .toLowerCase();
 
-  loadEnvConfig(process.cwd());
+  loadEnv();
   const url = new URL(process.env.DATABASE_URL!);
   if (!["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
     throw new Error(`Refusing: ${url.hostname} isn't a local database.`);
   }
-  const site = new URL(process.env.AUTH_URL ?? "http://localhost:3000");
+  const site = new URL(process.env.PUBLIC_URL ?? "http://localhost:3000");
   if (site.protocol !== "http:") {
-    throw new Error("Refusing: AUTH_URL isn't a local http:// address.");
+    throw new Error("Refusing: PUBLIC_URL isn't a local http:// address.");
   }
 
   const db = drizzle(url.href);
   try {
-    const [user] = await db
-      .insert(users)
-      .values({ email, emailVerified: new Date() })
-      .onConflictDoUpdate({ target: users.email, set: { email } })
-      .returning({ id: users.id });
+    const { userId, token, expiresAt } = await createLocalSession(db, email);
+    if (seed) await seedBookings(db, userId);
 
-    const sessionToken = randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await db
-      .insert(sessions)
-      .values({ sessionToken, userId: user.id, expires });
-    if (seed) await seedBookings(db, user.id);
-
-    // Auth.js's cookie name over plain HTTP. On HTTPS it gets a __Secure- prefix.
-    const cookie = { name: "authjs.session-token", value: sessionToken };
     mkdirSync("e2e/.auth", { recursive: true });
     writeFileSync(
       STATE_FILE,
-      JSON.stringify({
-        cookies: [
-          {
-            ...cookie,
-            domain: site.hostname,
-            path: "/",
-            expires: Math.floor(expires.getTime() / 1000),
-            httpOnly: true,
-            secure: false,
-            sameSite: "Lax",
-          },
-        ],
-        origins: [],
-      }),
+      JSON.stringify(storageState(site, token, expiresAt)),
     );
 
     console.log(`Signed in as ${email}${seed ? ", with the demo bookings" : ""}.
-  curl:        curl -H 'Cookie: ${cookie.name}=${cookie.value}' ${site.origin}/bookings
+  curl:        curl -H 'Cookie: ${LOCAL_SESSION_COOKIE}=${token}' ${site.origin}/api/bookings
   Playwright:  storageState: "${STATE_FILE}"
-  browser:     set the cookie ${cookie.name} on ${site.hostname}`);
+  browser:     set the cookie ${LOCAL_SESSION_COOKIE} on ${site.hostname}`);
   } finally {
     await db.$client.end();
   }

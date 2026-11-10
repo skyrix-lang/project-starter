@@ -1,33 +1,33 @@
-# dependency stage
+# One image per customer app. The same image runs anywhere: everything it needs
+# to know (PUBLIC_URL, DATABASE_URL, OIDC_*) is read from the environment when
+# the container starts, never baked in at build time.
+
+# dependency stage: lockfile only, no install scripts (.yarnrc.yml)
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN corepack enable
 COPY . .
 RUN yarn install --immutable
 
-# build stage — static pages embed the site URL, so it's needed here
+# build stage: the SPA (apps/web/dist) and the BFF bundled into one file
 FROM deps AS build
-ARG NEXT_PUBLIC_SITE_URL
-ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN yarn build
 
-# migration stage — applies drizzle/ to DATABASE_URL, then exits
+# migration stage: applies packages/db/drizzle to DATABASE_URL, then exits.
+# Run it as a deploy step before the new version starts.
 FROM deps AS migrate
 CMD ["yarn", "db:migrate"]
 
-# runtime stage — Next.js standalone server (SSR / Server Actions)
+# runtime stage: Node, one JavaScript file and static assets. No node_modules,
+# no package manager, no source, and an unprivileged user.
 FROM node:22-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
-
-# standalone bundles server.js + minimal node_modules; `yarn build` has already
-# copied public/ and .next/static into it, so one copy is enough.
-COPY --from=build --chown=node:node /app/.next/standalone ./
-
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOST=0.0.0.0 \
+    STATIC_DIR=/app/public
+COPY --from=build --chown=node:node /app/apps/bff/dist/ ./
+COPY --from=build --chown=node:node /app/apps/web/dist/ ./public/
 USER node
-
 EXPOSE 3000
-
-CMD ["node", "server.js"]
+CMD ["node", "--enable-source-maps", "server.js"]

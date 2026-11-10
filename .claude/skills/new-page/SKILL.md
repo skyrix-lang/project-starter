@@ -1,6 +1,6 @@
 ---
 name: new-page
-description: Create a new Next.js page or route in this project, with the right rendering, metadata, SEO files and Playwright test. Use whenever adding a page, screen, route, landing page or any new URL.
+description: Create a new page or route in this project's React SPA (TanStack Router), with the right metadata, SEO files and tests. Use whenever adding a page, screen, route, landing page or any new URL.
 ---
 
 # Add a page
@@ -12,65 +12,54 @@ Work out which type the page is from the request. Ask only if it's unclear.
 - **Public:** should appear in Google, such as a landing, pricing or article page.
 - **App:** a working screen, such as a dashboard, or anything behind a login.
 
+The app is a client-rendered SPA: crawlers first see `apps/web/index.html`,
+then the page after JavaScript runs. A public page that must rank well without
+JavaScript needs a prerendered page: raise it, don't work around it.
+
 ## 2. Build it
 
-Create `src/app/<route>/page.tsx` as a Server Component. Keep route-only components
-beside the page, and shared ones in `src/components`. `params` and `searchParams`
-are promises: await them. Validate `searchParams` with Zod `safeParse`.
-
-|                 | Public page                 | App page                   |
-| --------------- | --------------------------- | -------------------------- |
-| Rendering       | Static or `revalidate`      | Dynamic is fine            |
-| `loading.tsx`   | No                          | Yes, if it reads data      |
-| Canonical       | Yes                         | No                         |
-| Robots          | Indexable                   | `robots: { index: false }` |
-| Sitemap         | Add to `src/app/sitemap.ts` | Leave out                  |
-| Open Graph      | Yes                         | No                         |
-| Structured data | If a type fits              | No                         |
-
-A public page needs metadata like this. A page's `openGraph` replaces the layout's,
-so spread `sharedOpenGraph`:
+Add `apps/web/src/routes/<path>.tsx` (TanStack Router file route; the Vite
+plugin regenerates `routeTree.gen.ts`, commit it). Links to it are type-checked:
+a wrong path is a compile error.
 
 ```tsx
-import type { Metadata } from "next";
-import { sharedOpenGraph } from "@/lib/site";
-
-const title = "Pricing";
-const description = "One clear sentence of about 150 characters.";
-
-export const metadata: Metadata = {
-  title,
-  description,
-  alternates: { canonical: "/pricing" },
-  openGraph: { ...sharedOpenGraph, title, description, url: "/pricing" },
-};
+export const Route = createFileRoute("/pricing")({
+  validateSearch: z.object({ plan: z.string().optional().catch(undefined) }),
+  component: pageFor("/pricing", PricingPage),
+});
 ```
 
-An app page needs only this:
+- Validate search params with Zod in `validateSearch`; use `.catch()` so a bad
+  value falls back instead of erroring.
+- An app page calls `requireUser(context.queryClient, location.href)` from
+  `src/auth.ts` in `beforeLoad`. The BFF still checks every API call.
+- Wrap the page component in `pageFor(route, Page)` (`src/overrides.ts`) so a
+  customer app can replace it.
+- Feature screens live in a `packages/feature-*` package; the route file only
+  wires them.
 
-```tsx
-export const metadata: Metadata = {
-  title: "Dashboard",
-  robots: { index: false },
-};
-```
-
-For dynamic routes, use `generateMetadata` and call `notFound()` when the record
-doesn't exist. Public dynamic routes also list their URLs in `sitemap.ts`, and use
-`generateStaticParams` when the set of pages is known.
+|            | Public page                                          | App page                                |
+| ---------- | ---------------------------------------------------- | --------------------------------------- |
+| Meta       | `usePageMeta({ title })`                             | `usePageMeta({ title, noindex: true })` |
+| Auth       | None                                                 | `requireUser` in `beforeLoad`           |
+| Sitemap    | Add to `PUBLIC_PATHS` in `packages/core/src/site.ts` | Leave out                               |
+| Loading UI | Avoid layout shift                                   | Skeleton with `role="status"`           |
 
 ## 3. Check the structure
 
-- One `h1`, no skipped heading levels, and meaningful `alt` text.
-- Add it to `navLinks` in `src/components/layout/Header.tsx` if it needs a nav link.
-- Keep any `"use client"` to the smallest interactive component.
-- Copy existing colours and spacing from `src/app/globals.css` tokens.
+- One `h1`, no skipped heading levels, meaningful `alt` text (or `alt=""` for
+  decoration), visible focus, WCAG 2.2 AA contrast. The e2e tests run axe.
+- Add it to `navLinks` in `apps/web/src/components/header.tsx` if needed.
+- Style with the theme's tokens (`bg-primary`, `text-muted-foreground`…), never
+  raw colours: branding is one CSS file per customer.
+- Style a link as a button with `buttonVariants()`; never a `<button>` in a link.
+- Breakpoints are CSS; never read the screen size in render.
 
 ## 4. Test and verify
 
-Add tests to `e2e/` covering the page's content and main interaction. For a public
-page, add to `e2e/seo.spec.ts`: canonical, description, sitemap entry and no
-`noindex`. For an app page, check it has `noindex` and isn't in the sitemap.
+Add tests to `e2e/` for the page's content and main interaction. For a public
+page, add to `e2e/seo.spec.ts`: sitemap entry and no `noindex`. For an app
+page, check it has `noindex`, isn't in the sitemap, and a signed-out visit goes
+to `/sign-in?returnTo=…`.
 
-Run `yarn format`, then `yarn check`, `yarn lint` and `yarn test`. Confirm in the
-`yarn build` route table that a public page is `○` (static), not `ƒ` (dynamic).
+Run `yarn verify` and `yarn test`.
