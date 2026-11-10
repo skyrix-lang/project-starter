@@ -1,0 +1,30 @@
+{
+  "name": "@booking/bff",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/app.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p .",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "build": "vite build",
+    "export-openapi": "tsx scripts/export-openapi.ts"
+  },
+  "dependencies": {
+    "@booking/core": "workspace:^",
+    "@booking/db": "workspace:^",
+    "@hono/node-server": "^2.1.6",
+    "@hono/zod-openapi": "^1.6.3",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.16",
+    "openid-client": "^6.8.9",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "vite": "^8.3.5"
+  }
+}

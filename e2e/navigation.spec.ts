@@ -1,14 +1,7 @@
 import { expect, test } from "./support";
 
 test.describe("home page", () => {
-  test("is server-rendered", async ({ request }) => {
-    const html = await (await request.get("/")).text();
-
-    expect(html).toContain("confidence");
-    expect(html).toContain("Easy Scheduling");
-  });
-
-  test("shows the hero, features and metadata", async ({ page }) => {
+  test("shows the hero, features and title", async ({ page }) => {
     await page.goto("/");
 
     await expect(page).toHaveTitle("BookingHub");
@@ -23,7 +16,7 @@ test.describe("home page", () => {
   test("loads the logo", async ({ page }) => {
     await page.goto("/");
 
-    const logo = page.getByRole("img", { name: "Logo" });
+    const logo = page.getByRole("banner").locator('img[src="/logo.svg"]');
     await expect(logo).toBeVisible();
     await expect
       .poll(() => logo.evaluate((img: HTMLImageElement) => img.naturalWidth))
@@ -53,6 +46,9 @@ test.describe("header", () => {
       .click();
 
     await expect(page).toHaveURL("/bookings");
+    await expect(
+      page.getByRole("banner").getByRole("link", { name: "Bookings" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   test("mobile menu", async ({ page, isMobile }) => {
@@ -78,17 +74,29 @@ test.describe("header", () => {
 });
 
 test.describe("unknown pages", () => {
-  // The browser logs the 404 response itself as a console error.
-  test.use({ allowConsoleErrors: true });
+  test("show the not-found page, which isn't indexed", async ({ page }) => {
+    // The server can't tell which paths the SPA knows, so it answers 200 and
+    // the page asks search engines not to index it.
+    await page.goto("/does-not-exist");
 
-  test("show the 404 page", async ({ page }) => {
-    const response = await page.goto("/does-not-exist");
-
-    expect(response?.status()).toBe(404);
     await expect(page).toHaveTitle("Page not found | BookingHub");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex",
+    );
 
     await page.getByRole("link", { name: "Back to home" }).click();
 
     await expect(page).toHaveURL("/");
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  });
+
+  test("an unknown API path is a JSON 404, not the app", async ({
+    request,
+  }) => {
+    const response = await request.get("/api/does-not-exist");
+
+    expect(response.status()).toBe(404);
+    expect(response.headers()["content-type"]).toContain("application/json");
   });
 });

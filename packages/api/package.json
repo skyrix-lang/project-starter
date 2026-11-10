@@ -1,0 +1,24 @@
+{
+  "name": "@booking/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./mocks": "./src/mocks.ts",
+    "./test-server": "./src/test-server.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p .",
+    "generate": "orval --config orval.config.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.105.3"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.6.0",
+    "msw": "^3.0.3",
+    "orval": "^8.46.0"
+  }
+}

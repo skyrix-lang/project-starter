@@ -1,315 +1,212 @@
 # booking-platform
 
-A Next.js 16 (App Router) full-stack starter: React 19, Tailwind CSS v4,
-TypeScript, PostgreSQL and Drizzle.
+A booking platform starter built to be sold to companies: **versioned packages
+plus a thin app per customer**, shipped as one Docker image.
 
-## Architecture
+- **Web:** React 19 single-page app with strict TypeScript and Vite. TanStack
+  Router for typed routes and TanStack Query for server data. shadcn/ui-style
+  components on Base UI, Tailwind CSS v4, React Hook Form and Zod 4.
+- **BFF (backend-for-frontend):** Hono on Node. It signs users in with OpenID
+  Connect as a confidential client, keeps sessions in an HttpOnly cookie, serves
+  the JSON API from PostgreSQL through Drizzle, sets the security headers and
+  serves the built SPA.
+- **Contract:** the BFF's routes produce an OpenAPI document. Orval generates
+  the typed client, the TanStack Query hooks and the MSW mocks from it.
+- **Quality:** oxlint (type-aware) and oxfmt from [oxc.rs](https://oxc.rs),
+  Vitest with MSW, Playwright with axe (WCAG 2.2 AA), and dependency rules
+  between packages.
 
-A single full-stack Next.js app — there is no separate backend process. The
-"backend" lives inside the app:
-
-- **Server Components** render pages on the server (SSR).
-- **`src/lib/bookings.ts`** is the server-only data layer. It uses
-  [Drizzle](https://orm.drizzle.team) to query PostgreSQL: the tables are defined
-  in `src/lib/db/schema.ts`, and `DATABASE_URL` sets the connection.
-- **`src/lib/booking-schema.ts`** holds the Zod schemas shared by the Server
-  Actions and the Route Handlers.
-- **Route Handlers** (`src/app/api/bookings`) expose a JSON HTTP API.
-- **Server Actions** (`src/app/bookings/actions.ts`) handle mutations from
-  forms and revalidate the page.
-- **[Auth.js](https://authjs.dev)** (`src/lib/auth.ts`) signs people in with
-  Google or an emailed link, and keeps sessions in Postgres. See
-  [Authentication](#authentication).
-- **`src/lib/env.ts`** validates the server's environment variables with Zod.
-  `src/instrumentation.ts` runs it when the server starts, so a missing or
-  invalid value stops it with a list of every problem.
+## Structure
 
 ```
-src/
-  app/
-    layout.tsx                  root layout (fonts, shell, Header/Footer)
-    page.tsx                    Home (Server Component)
-    bookings/page.tsx           Bookings list (SSR, ?status= filter)
-    bookings/actions.ts         Server Actions (confirm / cancel)
-    bookings/filter-bar.tsx     status filter links
-    bookings/loading.tsx        loading skeleton
-    sign-in/page.tsx            sign-in page (Google, email link)
-    sign-in/actions.ts          sign-in Server Actions
-    sign-in/check-email/        "check your email" page
-    api/bookings/route.ts       GET list / POST create
-    api/bookings/[id]/route.ts  PATCH status
-    api/health/route.ts         public health check (database reachable)
-    api/auth/[...nextauth]/     Auth.js endpoints (callbacks, sign-out, session)
-    error.tsx, not-found.tsx    error and 404 pages
-    icon.svg                    favicon
-    globals.css                 Tailwind v4 theme
-  lib/                          data layer and validation schemas
-  lib/auth.ts                   Auth.js config: providers, adapter, allowlist, limits
-  lib/env.ts                    environment validation
-  lib/rate-limit.ts             Postgres-backed rate limiter
-  lib/session.ts                getUser() / requireUser() for pages, actions, routes
-  lib/db/                       Drizzle schema, connection and demo data
-  instrumentation.ts            runs once at server start: checks the environment
-  components/                   layout + UI components
-  types/                        shared types
-drizzle/                        SQL migrations
-scripts/                        setup, dev, session and database scripts
-e2e/                            Playwright tests
-src/**/*.test.ts                unit tests (node:test)
-.github/                        CI workflow, Dependabot, pull request template
-docs/decisions.md               decisions and their reasons
-docs/specs/                     feature specs, and the template
-AGENTS.md, CLAUDE.md            the guide for coding agents
-.claude/                        skills, reviewer subagent, hooks, shared settings
-.mcp.json                       Next.js MCP server for agents
+apps/
+  web/                      the customer app (thin)
+    index.html              HTML shell: metadata crawlers read first
+    src/routes/             TanStack Router file routes (/, /bookings, /sign-in)
+    src/overrides.ts        typed page overrides for a customer
+    src/styles.css          Tailwind + UI kit + the customer's theme
+  bff/                      Hono server
+    src/app.ts              security headers, CSRF, routes, static SPA
+    src/routes/api.ts       JSON API, declared with Zod (OpenAPI)
+    src/routes/auth.ts      /auth/login, /auth/callback, /auth/logout
+    src/session.ts          server-side sessions (HttpOnly cookie)
+    src/env.ts              settings, checked at startup
+packages/
+  core/                     Zod schemas and types shared by web and BFF
+  db/                       Drizzle schema, migrations (drizzle/), seed data
+  api/                      openapi.json + generated client, hooks and MSW mocks
+  ui/                       UI kit on theme tokens
+  theme-default/            the brand: one CSS-variable file
+  feature-bookings/         the bookings screens (reference feature)
+e2e/                        Playwright tests
+scripts/                    setup, dev, session, API generation, boundary check
+docker/                     Dockerfile, Keycloak development realm
+docs/decisions.md           decisions and their reasons
+docs/specs/                 feature specs
 ```
+
+Each package has a short `AGENTS.md` with its rules.
 
 ## Getting started
 
-Needs Node 22 and Docker.
+Requires Node 22 (`.nvmrc`), Corepack (`corepack enable`) and Docker.
 
 ```bash
 yarn install
-yarn setup        # .env with a random AUTH_SECRET, Postgres, Mailpit, migrations
-yarn dev
+yarn setup        # .env, Postgres, Keycloak, database and migrations
+yarn dev          # http://localhost:3000
 ```
 
-`yarn setup` is safe to run again: it never overwrites `.env` or drops data. To
-sign in, enter any email on `/sign-in` and open the link at
-http://localhost:8025, or skip the email with `yarn dev:session you@example.test`,
-which prints a session cookie for the local database. Bookings belong
-to the user who creates them, so to see demo data, sign in once, then run
-`yarn db:seed you@example.com` with that address.
+Sign in as `ada` / `ada` or `grace` / `grace` on the local Keycloak. Then run
+`yarn db:seed ada@example.test` to give that user demo bookings. Keycloak's
+admin console is at http://localhost:8180 (admin / admin).
+
+`yarn dev` runs the BFF (port 3001, restarts on change) and Vite (port 3000).
+Vite forwards `/api` and `/auth` to the BFF, so the browser sees a single
+origin, as in production.
+
+**Upgrading an existing checkout:** add the new variables from `.env.example`
+to your `.env`: `PUBLIC_URL`, `SESSION_SECRET`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`
+and `OIDC_CLIENT_SECRET`. Remove the `AUTH_*` and `NEXT_PUBLIC_*` variables.
+Then run `yarn db:migrate`.
 
 ## Scripts
 
-```bash
-yarn setup    # prepare a checkout: .env, Postgres, Mailpit, migrations
-yarn dev      # start the dev server (Turbopack) on http://localhost:3000, or PORT from .env
-yarn dev:session [email] [--seed]  # sign in locally without email; prints the cookie
-yarn verify   # format:check + check + lint + test:unit: the quick gate
-yarn build    # production build (emits .next/standalone with assets)
-yarn start    # run the standalone production server
-yarn check    # type-check with tsc --noEmit
-yarn lint     # lint with oxlint (.oxlintrc.json)
-yarn format   # format with oxfmt (.oxfmtrc.json); format:check only checks
-yarn test:unit # run the unit tests (no Docker or build needed)
-yarn test     # run the Playwright tests
-yarn clean    # remove build output
-```
+| Command                                           | What it does                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------------- |
+| `yarn dev`                                        | BFF and Vite dev servers                                                  |
+| `yarn build` / `yarn start`                       | production build; serve it with the BFF                                   |
+| `yarn verify`                                     | format, types, type-aware lint, boundaries, API contract, unit tests      |
+| `yarn test`                                       | Playwright against the production build (Postgres and Keycloak in Docker) |
+| `yarn test:unit` / `yarn test:watch`              | Vitest                                                                    |
+| `yarn api:generate`                               | OpenAPI document from the BFF's routes, then client, hooks and mocks      |
+| `yarn setup`                                      | prepare a checkout or worktree                                            |
+| `yarn dev:session [email] [--seed]`               | sign in locally without Keycloak, print the cookie                        |
+| `yarn db:generate --name=<x>` / `yarn db:migrate` | new migration / apply migrations                                          |
+| `yarn db:seed <email>`                            | demo bookings for a user who has signed in                                |
+| `yarn db:up` / `yarn keycloak:up`                 | start the local containers                                                |
+| `yarn docker:build`                               | build the image                                                           |
 
-## Database
+## Configuration
 
-```bash
-yarn db:up        # start the local Postgres container
-yarn db:down      # stop it (data is kept in the booking-db volume)
-yarn db:generate  # create a migration from changes to the schema
-yarn db:migrate   # apply pending migrations
-yarn db:seed <email>  # give a signed-in user the demo bookings
-yarn db:studio    # browse the data in Drizzle Studio
-yarn mail:up      # start Mailpit: SMTP on :1025, inbox at http://localhost:8025
-yarn mail:down    # stop it
-```
+The BFF reads its settings from the environment when it starts
+(`apps/bff/src/env.ts`). A missing or invalid value stops it with a list of
+every problem. Nothing is baked in at build time, so one image serves any
+customer and any domain.
 
-To change the database, edit `src/lib/db/schema.ts`, run `yarn db:generate`,
-review the new SQL file in `drizzle/`, commit it, then run `yarn db:migrate`.
-Applied migrations are recorded in `drizzle.__drizzle_migrations`. The app never
-migrates on startup: run it as a deploy step, before the new version starts.
+| Variable                                              | Meaning                                                                                               |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `PUBLIC_URL`                                          | the address people use; used for the OIDC callback, the CSRF check, the canonical URL and the sitemap |
+| `DATABASE_URL`                                        | Postgres                                                                                              |
+| `SESSION_SECRET`                                      | signs the short-lived sign-in cookie (32+ random characters in production)                            |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | the identity provider and its confidential client                                                     |
+| `PORT`, `HOST`                                        | where the BFF listens (3000 and 0.0.0.0 in the image)                                                 |
+| `STATIC_DIR`                                          | the built SPA (set in the image)                                                                      |
+
+## Authentication
+
+Any OpenID Connect provider works: Keycloak, Entra ID, Auth0, Google and
+others. Create a **confidential** client with:
+
+- the authorization code flow and PKCE (S256);
+- the redirect URI `${PUBLIC_URL}/auth/callback`;
+- the post-logout redirect URI `${PUBLIC_URL}/`;
+- the scopes `openid email profile`.
+
+The browser never sees a token or the client secret. After the callback, the
+BFF stores a session row and sets an HttpOnly cookie, so deleting the row
+signs that session out. Signing out also ends the provider's session. Users
+are identified by issuer and subject. A user from before the move to OIDC, with
+the same verified email, keeps their data.
+
+Who may sign in is decided by the provider: every account it accepts gets in.
+Use the customer's own provider, or restrict a shared one to their users,
+groups or domain. Never point `OIDC_ISSUER` at a public provider without such a
+restriction.
+
+## API
+
+The JSON API lives under `/api`. Its OpenAPI document is at
+`/api/openapi.json`, and `packages/api/openapi.json` is the committed copy.
+
+- Every route except `/api/health`, `/api/me` and the document checks the
+  session and returns 401 without one.
+- Data is per user. Another user's booking behaves as if it doesn't exist (404).
+- Bad input gets 400 with `{ error, issues }`.
+
+To change the API, edit `apps/bff/src/routes/api.ts`, run `yarn api:generate`
+and commit both. `yarn verify` fails when the generated client is stale.
+
+## Customizing for a customer
+
+- **Branding:** copy `packages/theme-default` into a new theme package, change
+  the CSS variables, and import it in `apps/web/src/styles.css`. Components use
+  only these tokens.
+- **Pages:** replace a package's page in `apps/web/src/overrides.ts`. A route
+  that doesn't exist is a type error. Add the customer's own routes in
+  `apps/web/src/routes/`.
+- **Features:** add a `packages/feature-*` package. It may depend on `core`,
+  `api` and `ui` only (`scripts/check-boundaries.ts`).
 
 ## Tests
 
-Unit tests for pure logic, such as validation schemas, sit next to the code as
-`src/**/*.test.ts` and run with `yarn test:unit`. They use Node's built-in
-[test runner](https://nodejs.org/api/test.html) and `node:assert`, run through
-`tsx` so TypeScript and the `@/` alias work: no test framework to install. The
-`react-server` condition makes `server-only` importable outside Next.js. They
-take a second and need no database. Anything that needs the database, the
-server or a browser is an end-to-end test.
-
-End-to-end tests live in `e2e/` and use [Playwright](https://playwright.dev).
-Install the browser once, then run them:
-
-```bash
-yarn playwright install chromium
-yarn test              # run everything
-yarn test:ui           # interactive mode
-yarn test:report       # open the last HTML report
-yarn test e2e/api.spec.ts --project=api   # run one file
-```
-
-`yarn test` starts Postgres, builds the app and runs the production server on its
-own port, so a running `yarn dev` is not affected. Each run drops and recreates
-its own `booking_<n>_e2e` database, never the one in `.env`. The port (3100–3999)
-and `<n>` come from the checkout's directory (`scripts/checkout.ts`), so test runs
-in different worktrees don't collide. Set `E2E_PORT` or `E2E_DATABASE_URL` to
-choose them; the database name must end in `_e2e`.
-
-- **Projects:** `api` tests the Route Handlers without a browser. `desktop` and
-  `mobile` run every browser test at both sizes.
-- **Console errors fail a test.** That's how hydration mismatches get caught. A
-  test that causes one on purpose sets `test.use({ allowConsoleErrors: true })`.
-- **Tests run in parallel on one database.** A test that changes data should
-  create its own booking with `createBooking` from `e2e/support.ts`.
-- **Seed data belongs to the shared user.** `e2e/reset-database.ts` creates
-  `e2e-shared@example.test` with the demo bookings, and the signed-in tests use
-  that user. A test that signs in as its own user starts with no bookings.
-- **Each test has its own client address.** Sign-in emails are rate limited per
-  address, so `e2e/support.ts` sends a random `x-forwarded-for` from each test.
-- **Tests are signed in.** The `setup` project signs in once through the real
-  email flow (Mailpit) and saves the session to `e2e/.auth/`; the other projects
-  reuse it. A test that signs out or ends a session must use its own user:
-  `test.use(signedOut)` then `signInByEmail(page)`. Set `E2E_SMTP_URL` and
-  `E2E_MAILPIT_URL` to use another Mailpit.
-
-## CI
-
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`.
-One job runs `yarn verify`. The other runs
-`yarn test`, which starts Postgres and Mailpit in Docker on the runner, just as it
-does locally. With `CI` set, Playwright retries a failed test twice and fails on
-`test.only`. The HTML report is uploaded as the `playwright-report` artifact.
-Dependabot (`.github/dependabot.yml`) opens weekly update pull requests for
-dependencies, GitHub Actions and the Docker image, and CI runs on each of them.
-
-## Working with AI agents
-
-The project is set up so coding agents (Claude Code, Codex, Cursor, Copilot…)
-can build features on their own and check their work.
-
-- **`AGENTS.md` is the guide** every agent reads at the start of a session: the
-  rules, the workflow and what "done" means. `CLAUDE.md` imports it and adds
-  Claude Code specifics. Next.js keeps its own block at the top of `AGENTS.md`
-  pointing to the docs for the installed version: leave it there.
-- **Workflows** are in `.claude/skills/`: `new-feature`, `new-page`, `seo-check`
-  and `run-app`. They're plain Markdown, so agents without skill support can
-  follow them too.
-- **Decisions and specs:** `docs/decisions.md` records what was chosen and why,
-  so agents don't undo it. Bigger features start as a spec in `docs/specs/`.
-- **Fast feedback:** `yarn verify` takes a few seconds; `yarn test` about a
-  minute. CI runs both.
-- **Seeing the app:** `yarn dev:session` signs in without email, and the
-  `next-devtools` MCP server (`.mcp.json`) reads the dev server's errors, routes
-  and logs. Claude Code asks once before enabling it.
-- **Guardrails** (Claude Code, `.claude/settings.json`): hooks format every edited
-  file and refuse edits to committed migrations, `.env` files and `yarn.lock`.
-  `.env` can't be read, and force pushes are denied. Common commands such as
-  `yarn verify` and `yarn test` run without asking. Personal overrides go in
-  `.claude/settings.local.json`, which isn't committed.
-- **Review:** the `reviewer` subagent checks a change against the rules with
-  fresh context.
-- **Parallel agents:** give each task its own git worktree, then run
-  `yarn install && yarn setup` in it. A worktree gets its own dev port, dev
-  database, test port and test database; Postgres and Mailpit are shared.
-
-```bash
-git worktree add ../booking-invoices -b invoices
-cd ../booking-invoices && yarn install && yarn setup && yarn dev
-```
+- **Unit and component tests** (`yarn test:unit`) live next to the code. Pure
+  logic runs on Node. Components run in jsdom with Testing Library, and every
+  request goes to MSW handlers from `@booking/api/mocks`; an unhandled request
+  fails the test.
+- **End-to-end tests** (`yarn test`) build the app and run it with the bundled
+  BFF on its own port and database, signing in through the local Keycloak.
+  Every test also fails on a browser console error, or on an axe accessibility
+  violation (WCAG 2.2 AA) on the page it ends on. Most tests sign in by writing
+  a session row; `e2e/auth.spec.ts` drives the real Keycloak login.
 
 ## Docker
 
 ```bash
-# Build the app image. The site URL is embedded in the build.
-NEXT_PUBLIC_SITE_URL=https://example.com yarn docker:build
-
-# Apply migrations, then start the app
-docker build --target migrate -t booking-platform-migrate -f docker/Dockerfile .
-docker run --rm -e DATABASE_URL=... booking-platform-migrate
-docker run -p 3000:3000 -e DATABASE_URL=... -e AUTH_SECRET=... \
-  -e AUTH_URL=https://example.com -e AUTH_EMAIL_SERVER=... -e AUTH_EMAIL_FROM=... \
+yarn docker:build
+# Apply migrations (a deploy step, never at startup), then start the app
+docker build --target migrate -t booking-migrate -f docker/Dockerfile .
+docker run --rm -e DATABASE_URL=... booking-migrate
+docker run -p 3000:3000 -e PUBLIC_URL=https://bookings.example.com \
+  -e DATABASE_URL=... -e SESSION_SECRET=... \
+  -e OIDC_ISSUER=... -e OIDC_CLIENT_ID=... -e OIDC_CLIENT_SECRET=... \
   booking-platform:1.0.0
 ```
 
-The image runs the Next.js standalone server on a Node runtime (required for
-SSR and Server Actions) as a non-root user. `DATABASE_URL` and the `AUTH_*`
-variables are read when the container starts, not at build time. In production, use a managed Postgres and run the migrate image
-as a one-off job before each deploy.
+The runtime image holds Node, a single bundled `server.js` and the static
+files: no `node_modules`, no package manager, and it runs as a non-root user.
+Health check: `GET /api/health` (503 when the database is unreachable).
+
+CI builds the image on `main` and on tags, with an SBOM and build provenance,
+and signs release tags with cosign. See `SECURITY.md`.
 
 ## SEO
 
-- **Site details** live in `src/lib/site.ts`. Set `NEXT_PUBLIC_SITE_URL` to the
-  public address. It's read at build time, and a production build fails without it.
-- **Each public page** should set `alternates: { canonical: "/its-path" }` and
-  `openGraph` (spreading `sharedOpenGraph`), and be added to `src/app/sitemap.ts`.
-- **App screens** such as `/bookings` set `robots: { index: false }` and stay out
-  of the sitemap.
-- **Social image:** `src/app/opengraph-image.tsx` generates it. Add one to a route
-  folder to override it there.
-- **Structured data:** the home page describes the site as a `WebSite`. Add the
-  type that fits each project, such as `LocalBusiness` or `Event`.
+The app renders in the browser. Every URL first returns `apps/web/index.html`,
+and the BFF fills in `PUBLIC_URL` when it serves it. That file carries the home
+page's title, description, canonical URL, Open Graph tags and JSON-LD.
+`robots.txt` and `sitemap.xml` are built from `PUBLIC_URL`. The pages listed in
+`PUBLIC_PATHS` (`packages/core/src/site.ts`) appear in the sitemap. App pages
+add `noindex` when they render. A public page that has to rank on its own
+content needs prerendering (see `docs/decisions.md`).
 
-## JavaScript
+## Security
 
-Pages are server-rendered, but `/bookings` needs JavaScript in the browser:
-`loading.tsx` adds a Suspense boundary, so the page is streamed after the skeleton
-and JavaScript swaps it in. Without JavaScript the skeleton stays on screen. The
-content is still in the HTML, for crawlers that read it. Delete `loading.tsx` if a
-route has to work without JavaScript; you lose the skeleton.
+- Sign-in uses OIDC with PKCE through a confidential client. Sessions are
+  server-side, the cookie is HttpOnly and SameSite=Lax (`__Host-` on https),
+  and only a hash of the session token is stored.
+- The CSP allows scripts from `'self'` only, with no `'unsafe-inline'`. The
+  other headers are HSTS, `X-Frame-Options: DENY`, `nosniff` and a strict
+  referrer policy (`apps/bff/src/app.ts`). Add third-party origins there.
+- The CSRF check refuses cross-site form posts. There is no CORS, so other
+  origins can't send JSON.
+- Sign-ins are rate limited per client address (`apps/bff/src/rate-limit.ts`).
+- Supply chain: install scripts are disabled, versions younger than 7 days are
+  refused, CI installs from the lockfile only, and Dependabot has a cooldown.
 
-Streaming also means the HTTP status is sent before the database answers. If a
-query fails, `/bookings` returns 200 and the browser shows the error page. So for
-health checks, use `/api/health` instead: it needs no session, and returns 200
-`{"status":"ok"}` when the database answers, or 503 when it doesn't. Point the
-load balancer's or orchestrator's readiness check at it.
+## Working with AI agents
 
-## Security headers
-
-`next.config.ts` sends a Content Security Policy, HSTS, `nosniff`,
-`X-Frame-Options` and `Referrer-Policy` on every response.
-
-- **The CSP is static**, so public pages stay static. It allows inline scripts,
-  because Next.js inlines its own. A [nonce-based policy](https://nextjs.org/docs/app/guides/content-security-policy)
-  is stricter but renders every page on each request.
-- **Adding a third party** (analytics, a CDN, an embedded map) means adding its
-  origins to the matching directive. Playwright tests fail on any CSP violation,
-  because the browser reports it as a console error.
-- **HSTS** tells browsers to use HTTPS for two years, including subdomains.
-  Browsers ignore it over plain HTTP, so local development is unaffected. Remove
-  `includeSubDomains` if a subdomain still needs plain HTTP.
-
-## Authentication
-
-[Auth.js](https://authjs.dev) v5 (`next-auth`) with its Drizzle adapter. Nobody
-creates an account or a password: people sign in with **Google**, or with a
-**link sent by email**. The first sign-in creates the user. Sessions are rows in
-the `sessions` table, so ending one (for example by deleting it) takes effect
-immediately.
-
-| Variable                               | Needed for                                                                                        |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `AUTH_SECRET`                          | Always. Signs cookies and tokens. `npx auth secret`. 32+ characters in production                 |
-| `AUTH_URL`                             | Always in production. The public address; sign-in links use it, never the request's `Host` header |
-| `AUTH_EMAIL_SERVER`, `AUTH_EMAIL_FROM` | Email links. An SMTP URL such as `smtps://user:pass@smtp.resend.com:465`                          |
-| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google                                                                                            |
-| `AUTH_ALLOWED_EMAILS`                  | Optional. Comma-separated addresses and `@domains` allowed to sign in                             |
-
-- **A provider is on when its variables are set**, and the sign-in page only
-  shows those. Leave Google's unset to use email only, or the reverse.
-- **Google:** in Google Cloud Console, under APIs & Services → Credentials,
-  create an OAuth client ID of type "Web application". Add
-  `${AUTH_URL}/api/auth/callback/google` as an authorised redirect URI (one for
-  `http://localhost:3000` too, for development).
-- **Email:** any SMTP service works, such as Resend, Postmark or Amazon SES.
-  Locally, `yarn mail:up` runs Mailpit, which shows every email instead of
-  sending it. `nodemailer` is on v10 although `next-auth` declares `^7 || ^8`:
-  every 8.x has security advisories, and Auth.js only uses `createTransport` and
-  `sendMail`, which haven't changed. Ignore that peer warning; don't downgrade.
-- **Who can sign in:** by default, anyone who can receive email or has a Google
-  account. Set `AUTH_ALLOWED_EMAILS` (for example `@yourcompany.com`) to limit it.
-- **What's protected:** `/bookings` and its Server Actions send signed-out
-  visitors to `/sign-in`, and `/api/bookings` returns 401. The JSON API uses the
-  same session cookie, so it's meant for the browser, not for scripts.
-- **Bookings are per user:** each one has a `user_id`, and every function in
-  `src/lib/bookings.ts` takes the signed-in user's id and only reads or changes
-  that user's rows. Another user's booking acts as if it doesn't exist (404 in
-  the API). Copy this for any per-user data.
-- **Sign-in emails are rate limited:** three per address and ten per client
-  address every 15 minutes, counted in the `rate_limits` table, so all server
-  instances share them. Beyond that, `/sign-in` shows "Too many sign-in emails".
-  The client address is the last `x-forwarded-for` entry, so run the app behind
-  a reverse proxy that sets it: without one, a client can send its own and get
-  around the per-client limit. Change the limits at the top of `src/lib/auth.ts`.
-- **Protecting new code:** call `requireUser(returnTo)` from `src/lib/session.ts`
-  at the top of each page and Server Action, and `getUser()` in each Route
-  Handler. Check inside each one: a layout or `proxy.ts` check alone doesn't
-  protect a Server Action.
+`AGENTS.md` is the guide for every agent, with a short `AGENTS.md` per package.
+`CLAUDE.md` adds Claude Code's skills, reviewer subagent and hooks. Strict
+types, the generated API client, the boundary check and tests that run in
+seconds are the guardrails. `yarn verify` is what an agent runs after each step.

@@ -1,0 +1,92 @@
+{
+  "realm": "booking",
+  "enabled": true,
+  "displayName": "BookingHub (development)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "bruteForceProtected": false,
+  "clients": [
+    {
+      "clientId": "booking-web",
+      "name": "BookingHub BFF (development only)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "booking-web-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:*"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "ada",
+      "email": "ada@example.test",
+      "emailVerified": true,
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ada",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "grace",
+      "email": "grace@example.test",
+      "emailVerified": true,
+      "firstName": "Grace",
+      "lastName": "Hopper",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "grace",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "linus",
+      "email": "linus@example.test",
+      "emailVerified": true,
+      "firstName": "Linus",
+      "lastName": "Pauling",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "linus",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "mallory",
+      "email": "victim@example.test",
+      "emailVerified": false,
+      "firstName": "Mallory",
+      "lastName": "Unverified",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mallory",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

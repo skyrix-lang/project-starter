@@ -1,36 +1,42 @@
-import type { Page } from "@playwright/test";
 import {
   bookingCard,
   createBooking,
   deleteSessionsFromDatabase,
   expect,
   gotoHydrated,
-  magicLinkFor,
-  requestSignInLink,
+  KEYCLOAK_USERS,
+  logInOnKeycloak,
   signedOut,
-  signInByEmail,
+  signInAsNewUser,
   test,
-  uniqueEmail,
 } from "./support";
 
 test.describe("signed out", () => {
   test.use(signedOut);
 
-  test("the bookings page asks to sign in, then comes back", async ({
+  test("the bookings page asks to sign in, then comes back through Keycloak", async ({
     page,
+    isMobile,
   }) => {
     await page.goto("/bookings?status=confirmed");
 
     await expect(page).toHaveURL(
-      "/sign-in?callbackUrl=%2Fbookings%3Fstatus%3Dconfirmed",
+      "/sign-in?returnTo=%2Fbookings%3Fstatus%3Dconfirmed",
     );
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 
-    await page.getByLabel("Email").fill(uniqueEmail());
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+    await page.getByRole("link", { name: "Continue to sign in" }).click();
+    await logInOnKeycloak(page, KEYCLOAK_USERS.ada);
+
+    await expect(page).toHaveURL("/bookings?status=confirmed");
+    await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
+    const header = page.getByRole("banner");
     await expect(
-      page.getByRole("heading", { name: "Check your email" }),
+      header.getByRole("button", { name: "Sign out" }),
     ).toBeVisible();
+    if (!isMobile) {
+      await expect(header.getByText(KEYCLOAK_USERS.ada.email)).toBeVisible();
+    }
   });
 
   test("the header offers to sign in", async ({ page }) => {
@@ -41,83 +47,69 @@ test.describe("signed out", () => {
       .getByRole("link", { name: "Sign in" })
       .click();
 
-    await expect(page).toHaveURL("/sign-in?callbackUrl=%2F");
+    await expect(page).toHaveURL("/sign-in?returnTo=%2F");
   });
 
-  test("offers Google and email", async ({ page }) => {
-    await page.goto("/sign-in");
+  test("ignores a return address on another site", async ({ page }) => {
+    await page.goto("/sign-in?returnTo=https%3A%2F%2Fevil.example");
+    await page.getByRole("link", { name: "Continue to sign in" }).click();
+    await logInOnKeycloak(page, KEYCLOAK_USERS.grace);
 
-    await expect(
-      page.getByRole("button", { name: "Continue with Google" }),
-    ).toBeVisible();
-    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page).toHaveURL("/bookings");
   });
 
-  test("a magic link signs in and returns to the requested page", async ({
+  test("a wrong password stays on Keycloak", async ({ page }) => {
+    await page.goto("/auth/login");
+    await logInOnKeycloak(page, { username: "ada", password: "wrong" });
+
+    await expect(page.getByText("Invalid username or password.")).toBeVisible();
+  });
+
+  test("a callback without a sign-in in progress is refused", async ({
     page,
-    isMobile,
   }) => {
-    const email = await signInByEmail(page, {
-      callbackUrl: "/bookings?status=pending",
-    });
+    await page.goto("/auth/callback?code=forged&state=forged");
 
-    await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
-    const header = page.getByRole("banner");
-    await expect(
-      header.getByRole("button", { name: "Sign out" }),
-    ).toBeVisible();
-    if (!isMobile) await expect(header.getByText(email)).toBeVisible();
+    await expect(page).toHaveURL("/sign-in?error=Expired");
+    await expect(page.getByRole("alert")).toContainText("took too long");
   });
 
-  test("a magic link works only once", async ({ page, browser }) => {
-    const email = uniqueEmail();
-    await page.goto("/sign-in");
-    await page.getByLabel("Email").fill(email);
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Check your email" }),
-    ).toBeVisible();
-    const link = await magicLinkFor(email);
-    await page.goto(link);
+  test("the session cookie is HttpOnly and SameSite", async ({
+    page,
+    context,
+  }) => {
+    await page.goto("/auth/login");
+    await logInOnKeycloak(page, KEYCLOAK_USERS.ada);
     await expect(page).toHaveURL("/bookings");
 
-    const other = await browser.newContext(signedOut);
-    const otherPage = await other.newPage();
-    await otherPage.goto(link);
-
-    await expect(otherPage.getByRole("main").getByRole("alert")).toContainText(
-      "expired or was already used",
+    const session = (await context.cookies()).find((c) => c.name === "session");
+    expect(session).toMatchObject({ httpOnly: true, sameSite: "Lax" });
+    expect(await page.evaluate(() => document.cookie)).not.toContain(
+      "session=",
     );
-    await other.close();
   });
+});
 
-  test("ignores a callback URL on another site", async ({ page }) => {
-    await signInByEmail(page, { callbackUrl: "/bookings" });
-    await page.goto("/sign-in?callbackUrl=https%3A%2F%2Fevil.example");
+test.describe("when the session ends", () => {
+  // The browser logs the API's 401 response as a console error.
+  test.use({ ...signedOut, allowConsoleErrors: true });
 
-    await expect(page).toHaveURL("/bookings");
-  });
+  test("an action asks to sign in, then comes back", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const email = await signInAsNewUser(context, baseURL!);
+    const { title } = await createBooking(page.request);
+    await gotoHydrated(page, "/bookings");
+    await expect(bookingCard(page, title)).toBeVisible();
 
-  test("rejects an invalid email address", async ({ page }) => {
-    await gotoHydrated(page, "/sign-in");
+    await deleteSessionsFromDatabase(email);
+    await bookingCard(page, title)
+      .getByRole("button", { name: "Confirm" })
+      .click();
 
-    // The browser accepts "ada@localhost"; the server requires a real domain.
-    await page.getByLabel("Email").fill("ada@localhost");
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-
-    await expect(page.getByText("Enter a valid email address.")).toBeVisible();
-    await expect(page.getByLabel("Email")).toHaveValue("ada@localhost");
-  });
-
-  test("refuses an address outside the allowlist", async ({ page }) => {
-    await page.goto("/sign-in");
-
-    await page.getByLabel("Email").fill(uniqueEmail("outside.test"));
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-
-    await expect(
-      page.getByText("This email address isn't allowed to sign in."),
-    ).toBeVisible();
+    await expect(page).toHaveURL("/sign-in?returnTo=%2Fbookings");
   });
 });
 
@@ -126,8 +118,10 @@ test.describe("signed out", () => {
 test.describe("own session", () => {
   test.use(signedOut);
 
-  test("signing out", async ({ page }) => {
-    await signInByEmail(page);
+  test("signing out ends the Keycloak session too", async ({ page }) => {
+    await page.goto("/auth/login?returnTo=/bookings");
+    await logInOnKeycloak(page, KEYCLOAK_USERS.grace);
+    await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
 
     await page
       .getByRole("banner")
@@ -138,55 +132,25 @@ test.describe("own session", () => {
     await expect(
       page.getByRole("banner").getByRole("link", { name: "Sign in" }),
     ).toBeVisible();
-    await page.goto("/bookings");
-    await expect(page).toHaveURL(/\/sign-in\?/);
-  });
-
-  test("an action after the session ends asks to sign in", async ({ page }) => {
-    const email = await signInByEmail(page);
-    const { title } = await createBooking(page.request);
-    await page.goto("/bookings");
-
-    await deleteSessionsFromDatabase(email);
-    await bookingCard(page, title)
-      .getByRole("button", { name: "Confirm" })
-      .click();
-
-    await expect(page).toHaveURL("/sign-in?callbackUrl=%2Fbookings");
+    // Keycloak asks for the password again: its own session ended as well.
+    await page.goto("/auth/login");
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   });
 });
 
-test.describe("sign-in email limits", () => {
+test.describe("sign-in limits", () => {
   test.use(signedOut);
 
-  const checkEmail = (page: Page) =>
-    page.getByRole("heading", { name: "Check your email" });
-  const refused = (page: Page) => page.getByRole("main").getByRole("alert");
-
-  test("sends at most three emails to one address", async ({ page }) => {
-    const email = uniqueEmail();
-    for (let sent = 0; sent < 3; sent++) {
-      await page.goto("/sign-in");
-      await requestSignInLink(page, email);
-      await expect(checkEmail(page)).toBeVisible();
+  test("starts at most 30 sign-ins per client in 15 minutes", async ({
+    request,
+  }) => {
+    for (let started = 0; started < 30; started++) {
+      const response = await request.get("/auth/login", { maxRedirects: 0 });
+      expect(response.headers().location).toContain("/realms/booking/");
     }
 
-    await page.goto("/sign-in");
-    await requestSignInLink(page, email);
+    const refused = await request.get("/auth/login", { maxRedirects: 0 });
 
-    await expect(refused(page)).toContainText("Too many sign-in emails");
-  });
-
-  test("sends at most ten emails for one client", async ({ page }) => {
-    for (let sent = 0; sent < 10; sent++) {
-      await page.goto("/sign-in");
-      await requestSignInLink(page, uniqueEmail());
-      await expect(checkEmail(page)).toBeVisible();
-    }
-
-    await page.goto("/sign-in");
-    await requestSignInLink(page, uniqueEmail());
-
-    await expect(refused(page)).toContainText("Too many sign-in emails");
+    expect(refused.headers().location).toBe("/sign-in?error=RateLimited");
   });
 });

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 // Several agents can work at once, each in its own git worktree. These give each
 // checkout its own ports and databases, so their dev servers and test runs don't
-// collide. Postgres and Mailpit are shared: one container each, many databases.
+// collide. Postgres and Keycloak are shared: one container each, many databases.
 
 /** A number from 0 to 899, stable for this checkout's directory. */
 export function checkoutSlot(directory = process.cwd()): number {
@@ -23,9 +23,14 @@ export function isWorktree(): boolean {
   }
 }
 
-/** Dev server port: 3000 in the main checkout, 4000–4899 in a worktree. */
+/** Vite dev server port: 3000 in the main checkout, 4000–4899 in a worktree. */
 export function devPort(): number {
   return isWorktree() ? 4000 + checkoutSlot() : 3000;
+}
+
+/** The BFF in development: 3001 in the main checkout, 5000–5899 in a worktree. */
+export function bffDevPort(): number {
+  return isWorktree() ? 5000 + checkoutSlot() : 3001;
 }
 
 /** Playwright's production server: 3100–3999, different for every checkout. */

@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
 
 # A newer push to the same branch or pull request cancels the run in progress.
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   checks:
-    name: Format, types, lint and unit tests
+    name: Format, types, lint, boundaries, API contract and unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,12 +28,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: yarn
+      # Lockfile only, no install scripts, no version younger than 7 days
+      # (.yarnrc.yml).
       - run: yarn install --immutable
-      # Format check, types, lint and unit tests: what agents run after each step.
+      # What agents run after each step.
       - run: yarn verify
 
   e2e:
-    name: Playwright
+    name: Playwright (with axe)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -44,8 +47,8 @@ jobs:
           cache: yarn
       - run: yarn install --immutable
       - run: yarn playwright install --with-deps chromium
-      # Starts Postgres and Mailpit in Docker, builds the app and runs the tests,
-      # exactly as it does locally.
+      # Starts Postgres and Keycloak in Docker, builds the app and runs the
+      # tests, exactly as it does locally.
       - run: yarn test
         env:
           CI: true
@@ -55,3 +58,44 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  image:
+    name: Image (SBOM, provenance, signature)
+    needs: [checks, e2e]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # keyless signing with cosign
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+      # An SBOM and build provenance are attached to every image: the Cyber
+      # Resilience Act expects an SBOM per release.
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: runner
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - uses: sigstore/cosign-installer@v3
+        if: startsWith(github.ref, 'refs/tags/')
+      - name: Sign the release image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: cosign sign --yes "ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}"

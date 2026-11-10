@@ -1,59 +1,40 @@
 import { expect, test } from "./support";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+// PUBLIC_URL is the server's own address in the tests (playwright.config.ts).
 
 test.describe("home page", () => {
-  test("has a canonical URL and social metadata", async ({ page }) => {
-    await page.goto("/");
+  test("has a canonical URL and social metadata in the HTML", async ({
+    request,
+    baseURL,
+  }) => {
+    // What a crawler or link preview reads before any JavaScript runs.
+    const html = await (await request.get("/")).text();
 
-    await expect(page).toHaveTitle("BookingHub");
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
-      "href",
-      new RegExp(`^${SITE_URL}/?$`),
+    expect(html).toContain("<title>BookingHub</title>");
+    expect(html).toContain(`<link rel="canonical" href="${baseURL}/" />`);
+    expect(html).toMatch(
+      /<meta\s+name="description"\s+content="[^"]*manage your bookings/,
     );
-    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
-      "content",
-      /manage your bookings/,
-    );
-    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
-      "content",
-      "BookingHub",
-    );
-    await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute(
-      "content",
-      "BookingHub",
-    );
-    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
-      "content",
-      "summary_large_image",
-    );
-    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+    expect(html).toContain('<meta property="og:title" content="BookingHub" />');
+    expect(html).toContain(`<meta property="og:url" content="${baseURL}/" />`);
+    expect(html).not.toContain("%PUBLIC_URL%");
+    expect(html).not.toContain('name="robots"');
   });
 
-  test("links to a generated social image", async ({ page, request }) => {
-    await page.goto("/");
-
-    const url = await page
-      .locator('meta[property="og:image"]')
-      .getAttribute("content");
-    expect(url).toContain(`${SITE_URL}/opengraph-image`);
-
-    const image = await request.get(new URL(url!).pathname);
-    expect(image.status()).toBe(200);
-    expect(image.headers()["content-type"]).toBe("image/png");
-  });
-
-  test("describes the site with structured data", async ({ request }) => {
+  test("describes the site with structured data", async ({
+    request,
+    baseURL,
+  }) => {
     const html = await (await request.get("/")).text();
 
     const json = html.match(
-      /<script type="application\/ld\+json">(.*?)<\/script>/,
+      /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
     )?.[1];
     expect(JSON.parse(json!)).toMatchObject({
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: "BookingHub",
-      url: SITE_URL,
+      url: baseURL,
     });
   });
 
@@ -71,44 +52,41 @@ test("the bookings page isn't indexed", async ({ page }) => {
 
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
     "content",
-    /noindex/,
+    "noindex",
   );
 });
 
-for (const path of ["/sign-in", "/sign-in/check-email"]) {
-  test(`${path} isn't indexed`, async ({ browser }) => {
-    // Signed out: a signed-in visitor is sent on from /sign-in.
-    const context = await browser.newContext({
-      storageState: { cookies: [], origins: [] },
-    });
-    const page = await context.newPage();
-    await page.goto(path);
+test.describe("signed out", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("/sign-in isn't indexed", async ({ page }) => {
+    await page.goto("/sign-in");
 
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
       "content",
-      /noindex/,
+      "noindex",
     );
     await expect(page.locator("h1")).toHaveCount(1);
-    await context.close();
   });
-}
+});
 
 test("robots.txt allows the site and points to the sitemap", async ({
   request,
+  baseURL,
 }) => {
   const robots = await (await request.get("/robots.txt")).text();
 
   expect(robots).toContain("Allow: /");
   expect(robots).toContain("Disallow: /api/");
-  expect(robots).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
+  expect(robots).toContain(`Sitemap: ${baseURL}/sitemap.xml`);
 });
 
-test("the sitemap lists public pages only", async ({ request }) => {
+test("the sitemap lists public pages only", async ({ request, baseURL }) => {
   const response = await request.get("/sitemap.xml");
 
   expect(response.status()).toBe(200);
   const sitemap = await response.text();
-  expect(sitemap).toContain(`<loc>${SITE_URL}</loc>`);
+  expect(sitemap).toContain(`<loc>${baseURL}</loc>`);
   expect(sitemap).not.toContain("/bookings");
   expect(sitemap).not.toContain("/sign-in");
 });
@@ -127,8 +105,20 @@ test("sends security headers", async ({ request }) => {
   });
   // Every browser test also runs under this policy, and a violation is a
   // console error, which fails the test.
-  expect(headers["content-security-policy"]).toContain(
-    "frame-ancestors 'none'",
-  );
-  expect(headers["content-security-policy"]).toContain("object-src 'none'");
+  const csp = headers["content-security-policy"];
+  expect(csp).toContain("script-src 'self'");
+  expect(csp).not.toContain("unsafe-inline");
+  expect(csp).toContain("frame-ancestors 'none'");
+  expect(csp).toContain("object-src 'none'");
+});
+
+test("hashed assets are cached for a year, the page isn't", async ({
+  request,
+}) => {
+  const page = await request.get("/");
+  expect(page.headers()["cache-control"]).toBe("no-cache");
+
+  const script = (await page.text()).match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
+  const asset = await request.get(script!);
+  expect(asset.headers()["cache-control"]).toContain("immutable");
 });

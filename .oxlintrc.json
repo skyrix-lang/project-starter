@@ -5,9 +5,9 @@
     "unicorn",
     "oxc",
     "react",
-    "nextjs",
     "jsx-a11y",
-    "import"
+    "import",
+    "vitest"
   ],
   "categories": {
     "correctness": "error"
@@ -16,18 +16,20 @@
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
     "react/jsx-key": "error",
-    "nextjs/no-html-link-for-pages": "error",
-    "nextjs/no-sync-scripts": "error",
-    "jsx-a11y/prefer-tag-over-role": "off"
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "import/no-cycle": "error"
   },
   "env": {
     "browser": true,
     "node": true
   },
   "ignorePatterns": [
-    ".next/**",
-    "out/**",
-    "next-env.d.ts",
+    "**/dist/**",
+    "**/routeTree.gen.ts",
+    "packages/api/src/generated/**",
     "test-results/**",
     "playwright-report/**"
   ]

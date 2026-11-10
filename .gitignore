@@ -9,11 +9,10 @@ node_modules
 .pnp.*
 
 # Build
-.next/
-out/
-next-env.d.ts
-.turbo/
+dist/
 *.tsbuildinfo
+# scripts/api.ts check output, removed after each run
+packages/api/src/.check-*
 
 # Playwright
 test-results/

@@ -1,24 +1,32 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import AxeBuilder from "@axe-core/playwright";
 import {
   expect,
   test as base,
   type APIRequestContext,
+  type BrowserContext,
   type Page,
 } from "@playwright/test";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
-import type { Booking } from "@/types";
+import type { Booking } from "@booking/core";
+import { createLocalSession, storageState } from "../scripts/local-session";
 
 /**
- * Every test also fails on a browser console error or uncaught exception, which
- * is how hydration mismatches show up. Tests that trigger an error on purpose
- * opt out with `test.use({ allowConsoleErrors: true })`.
+ * Every test also fails on:
+ * - a console error or uncaught exception in the app (not on Keycloak's
+ *   pages). Tests that trigger an error on purpose opt out with
+ *   `test.use({ allowConsoleErrors: true })`.
+ * - an accessibility violation (WCAG 2.2 AA, checked with axe) on the app
+ *   page the test ends on.
  */
 export const test = base.extend<{
   allowConsoleErrors: boolean;
   failOnConsoleError: void;
+  checkAccessibility: void;
 }>({
-  // Sign-in emails are rate limited per client address, which the app reads
-  // from x-forwarded-for. Each test gets its own, as if from its own machine, so
+  // Sign-ins are rate limited per client address, which the app reads from
+  // x-forwarded-for. Each test gets its own, as if from its own machine, so
   // parallel tests don't share a limit.
   // (`provide` is Playwright's `use`, renamed so it isn't taken for React's.)
   extraHTTPHeaders: async ({ extraHTTPHeaders }, provide) => {
@@ -26,16 +34,36 @@ export const test = base.extend<{
   },
   allowConsoleErrors: [false, { option: true }],
   failOnConsoleError: [
-    async ({ page, allowConsoleErrors }, use) => {
+    async ({ page, allowConsoleErrors, baseURL }, use) => {
       const errors: string[] = [];
+      const fromApp = () => page.url().startsWith(baseURL!);
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
+        if (message.type() === "error" && fromApp())
+          errors.push(message.text());
       });
-      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("pageerror", (error) => {
+        if (fromApp()) errors.push(error.message);
+      });
 
       await use();
 
       if (!allowConsoleErrors) expect(errors).toEqual([]);
+    },
+    { auto: true },
+  ],
+  checkAccessibility: [
+    async ({ page, baseURL }, use, testInfo) => {
+      await use();
+      if (testInfo.status !== testInfo.expectedStatus) return;
+      if (!page.url().startsWith(baseURL!)) return;
+      const { violations } = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+        .analyze();
+      expect(
+        violations.map(
+          ({ id, nodes }) => `${id}: ${nodes.map((n) => n.target).join(", ")}`,
+        ),
+      ).toEqual([]);
     },
     { auto: true },
   ],
@@ -45,7 +73,7 @@ export { expect };
 
 /** An address in 198.18.0.0/15, a range reserved for testing. */
 function randomIp() {
-  const [a, b, c] = randomBytes(3);
+  const [a = 0, b = 0, c = 0] = randomBytes(3);
   return `198.${18 + (a % 2)}.${b}.${c}`;
 }
 
@@ -82,29 +110,63 @@ export async function setBookingStatus(
   expect(response.ok()).toBe(true);
 }
 
-/** Removes a row directly: the app has no delete, and this mimics another user. */
-export async function deleteBookingFromDatabase(id: string) {
+async function withDatabase<T>(run: (db: Client) => Promise<T>) {
   const db = new Client({ connectionString: process.env.DATABASE_URL });
   await db.connect();
   try {
-    await db.query("DELETE FROM bookings WHERE id = $1", [id]);
+    return await run(db);
   } finally {
     await db.end();
   }
 }
 
+/** Removes a row directly: the app has no delete, and this mimics another user. */
+export async function deleteBookingFromDatabase(id: string) {
+  await withDatabase((db) =>
+    db.query("DELETE FROM bookings WHERE id = $1", [id]),
+  );
+}
+
+/** Ends a user's sessions directly in the database, as if they had expired. */
+export async function deleteSessionsFromDatabase(email: string) {
+  await withDatabase((db) =>
+    db.query(
+      "DELETE FROM user_sessions WHERE user_id IN (SELECT id FROM users WHERE email = $1)",
+      [email],
+    ),
+  );
+}
+
+/** A storage state signed in as `email`, written straight to the database. */
+export async function createSessionFor(email: string, baseURL: string) {
+  const db = drizzle(process.env.DATABASE_URL!);
+  try {
+    const { token, expiresAt } = await createLocalSession(db, email);
+    return storageState(new URL(baseURL), token, expiresAt);
+  } finally {
+    await db.$client.end();
+  }
+}
+
+/** Signs this browser context in as a new user of its own. Returns the email. */
+export async function signInAsNewUser(
+  context: BrowserContext,
+  baseURL: string,
+) {
+  const email = uniqueEmail();
+  const state = await createSessionFor(email, baseURL);
+  await context.addCookies(state.cookies);
+  return email;
+}
+
 /**
- * Opens a page and waits for React to hydrate, for tests that depend on client
- * behaviour. Links only start prefetching once hydrated, so the first prefetch
- * is the signal. The page must have a link to another route in the viewport.
+ * Opens a page and waits until the app has rendered it, for tests that depend
+ * on client behaviour. Everything is rendered by JavaScript, so the header
+ * showing means React is running.
  */
 export async function gotoHydrated(page: Page, url: string) {
-  await Promise.all([
-    page.waitForResponse((response) =>
-      new URL(response.url()).searchParams.has("_rsc"),
-    ),
-    page.goto(url),
-  ]);
+  await page.goto(url);
+  await expect(page.getByRole("banner")).toBeVisible();
 }
 
 export function bookingCard(page: Page, title: string) {
@@ -113,9 +175,6 @@ export function bookingCard(page: Page, title: string) {
     .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 }
 
-const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://localhost:8025";
-
-/** A new address for each call, inside the test allowlist (@example.test). */
 export function uniqueEmail(domain = "example.test") {
   return `e2e-${randomUUID()}@${domain}`;
 }
@@ -123,66 +182,40 @@ export function uniqueEmail(domain = "example.test") {
 /** For tests that start signed out, or sign in as their own user. */
 export const signedOut = { storageState: { cookies: [], origins: [] } };
 
-/** Waits for the sign-in email sent to `email` and returns its link. */
-export async function magicLinkFor(email: string): Promise<string> {
-  let id: string | undefined;
-  await expect
-    .poll(
-      async () => {
-        const response = await fetch(
-          `${MAILPIT_URL}/api/v1/search?${new URLSearchParams({ query: `to:"${email}"` })}`,
-        );
-        const { messages } = await response.json();
-        id = messages[0]?.ID;
-        return id;
-      },
-      { message: `no sign-in email for ${email}` },
-    )
-    .toBeTruthy();
+/** The users in docker/keycloak/realm.json. */
+export const KEYCLOAK_USERS = {
+  ada: { username: "ada", password: "ada", email: "ada@example.test" },
+  grace: { username: "grace", password: "grace", email: "grace@example.test" },
+  // Only for e2e/account-linking.spec.ts, which needs users nobody else signs in as.
+  linus: { username: "linus", password: "linus", email: "linus@example.test" },
+  // Claims victim@example.test without having verified it.
+  mallory: {
+    username: "mallory",
+    password: "mallory",
+    email: "victim@example.test",
+  },
+} as const;
 
-  const message = await (
-    await fetch(`${MAILPIT_URL}/api/v1/message/${id}`)
-  ).json();
-  const link = (message.Text as string).match(/https?:\/\/\S+/)?.[0];
-  expect(link, "the email contains a link").toBeTruthy();
-  return link!;
-}
-
-/**
- * Signs in through the real magic-link flow: requests a link, reads it from
- * Mailpit and follows it. Ends on `callbackUrl`.
- */
-export async function signInByEmail(
-  page: Page,
-  { email = uniqueEmail(), callbackUrl = "/bookings" } = {},
-) {
-  await page.goto(`/sign-in?${new URLSearchParams({ callbackUrl })}`);
-  await requestSignInLink(page, email);
-  await expect(
-    page.getByRole("heading", { name: "Check your email" }),
-  ).toBeVisible();
-
-  await page.goto(await magicLinkFor(email));
-  await expect(page).toHaveURL(callbackUrl);
-  return email;
-}
-
-/** Submits the email form on the sign-in page, which must be open. */
-export async function requestSignInLink(page: Page, email: string) {
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-}
-
-/** Ends a user's sessions directly in the database, as if they had expired. */
-export async function deleteSessionsFromDatabase(email: string) {
-  const db = new Client({ connectionString: process.env.DATABASE_URL });
-  await db.connect();
-  try {
-    await db.query(
-      "DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email = $1)",
+/** A user as they were before OIDC: an email, no identity, and one booking. */
+export async function createUserWithBooking(email: string, title: string) {
+  await withDatabase(async (db) => {
+    const { rows } = await db.query<{ id: string }>(
+      "INSERT INTO users (email) VALUES ($1) RETURNING id",
       [email],
     );
-  } finally {
-    await db.end();
-  }
+    await db.query(
+      "INSERT INTO bookings (user_id, title, date, time, duration) VALUES ($1, $2, '2030-05-01', '10:00', 30)",
+      [rows[0]!.id, title],
+    );
+  });
+}
+
+/** Fills in Keycloak's login form, which must be open. */
+export async function logInOnKeycloak(
+  page: Page,
+  user: { username: string; password: string },
+) {
+  await page.getByLabel("Username or email").fill(user.username);
+  await page.getByLabel("Password", { exact: true }).fill(user.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
 }
