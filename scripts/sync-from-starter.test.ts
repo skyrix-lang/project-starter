@@ -71,6 +71,21 @@ describe("decide", () => {
     );
   });
 
+  it("always takes the starter's version of the sync tooling", () => {
+    for (const ours of [b("ours"), undefined]) {
+      expect(
+        decide({
+          status: "M",
+          base,
+          theirs,
+          ours,
+          workspaceExists: true,
+          owned: true,
+        }),
+      ).toEqual({ kind: "write", content: theirs });
+    }
+  });
+
   it("merges a new file that the project already wrote its own way", () => {
     expect(
       decide({ status: "A", theirs, ours, workspaceExists: true }),

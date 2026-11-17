@@ -36,7 +36,8 @@ export const CONFIG_FILE = ".starter.json";
  * and this project's own record belong to one repository each. */
 export const ALWAYS_IGNORED = ["yarn.lock", "default.json", CONFIG_FILE];
 
-/** Hold the starter's names on purpose: copied as they are. */
+/** The sync tooling itself: always the starter's, copied as it is (these hold
+ * the starter's names on purpose, and the sync script needs rename.ts). */
 export const VERBATIM = new Set([
   "scripts/rename.ts",
   "scripts/rename.test.ts",
@@ -93,8 +94,10 @@ export function decide(change: {
   ours?: Buffer;
   /** False when the file belongs to a workspace the project removed. */
   workspaceExists: boolean;
+  /** The starter's own tooling: its version wins. */
+  owned?: boolean;
 }): Action {
-  const { status, base, theirs, ours, workspaceExists } = change;
+  const { status, base, theirs, ours, workspaceExists, owned } = change;
   if (status === "D") {
     if (!ours) return { kind: "none", reason: "already gone" };
     if (base && ours.equals(base)) return { kind: "delete" };
@@ -105,6 +108,7 @@ export function decide(change: {
   }
   if (!theirs) throw new Error(`No starter content for a ${status} change`);
   if (ours?.equals(theirs)) return { kind: "none", reason: "already the same" };
+  if (owned) return { kind: "write", content: theirs };
   if (!ours) {
     if (!workspaceExists) {
       return { kind: "skip", reason: "in a workspace this project removed" };
@@ -258,7 +262,7 @@ function main() {
 
     const log = git("log", "--oneline", "--no-merges", `${base}..${target}`);
     console.log(
-      `Starter ${base.slice(0, 7)} → ${target.slice(0, 7)}:\n${log.replace(/^/gm, "  ")}`,
+      `Starter ${base.slice(0, 7)} → ${target.slice(0, 7)}:\n${log.trimEnd().replace(/^/gm, "  ")}`,
     );
 
     const changes = parseNameStatus(
@@ -287,6 +291,7 @@ function main() {
         theirs,
         ours,
         workspaceExists: !workspace || existsSync(workspace),
+        owned: VERBATIM.has(path),
       });
 
       if (action.kind === "none") continue;
