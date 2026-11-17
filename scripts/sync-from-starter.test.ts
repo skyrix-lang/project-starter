@@ -23,6 +23,7 @@ describe("adapt", () => {
     expect(adapt("scripts/sync-from-starter.ts", content, names)).toEqual(
       content,
     );
+    expect(adapt("docs/starter-sync.md", content, names)).toEqual(content);
   });
 
   it("leaves binary files alone", () => {

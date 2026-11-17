@@ -36,13 +36,14 @@ export const CONFIG_FILE = ".starter.json";
  * and this project's own record belong to one repository each. */
 export const ALWAYS_IGNORED = ["yarn.lock", "default.json", CONFIG_FILE];
 
-/** The sync tooling itself: always the starter's, copied as it is (these hold
- * the starter's names on purpose, and the sync script needs rename.ts). */
+/** The sync tooling and its guide: always the starter's, copied as they are
+ * (they hold the starter's names on purpose; the sync script needs rename.ts). */
 export const VERBATIM = new Set([
   "scripts/rename.ts",
   "scripts/rename.test.ts",
   "scripts/sync-from-starter.ts",
   "scripts/sync-from-starter.test.ts",
+  "docs/starter-sync.md",
 ]);
 
 export type Config = Names & {

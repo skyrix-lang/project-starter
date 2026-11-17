@@ -88,8 +88,8 @@ starter's file now, and the project's file. Then:
 
 It never touches `yarn.lock`: when a `package.json` changed, it runs
 `yarn install`, which rewrites it. The sync tooling itself
-(`scripts/sync-from-starter.ts`, `scripts/rename.ts` and their tests) is always
-the starter's version. When it's done, `.starter.json` records the new commit.
+(`scripts/sync-from-starter.ts`, `scripts/rename.ts`, their tests and this
+guide) is always the starter's version, with the starter's names. When it's done, `.starter.json` records the new commit.
 
 ### Where it reads the starter
 

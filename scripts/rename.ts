@@ -127,6 +127,7 @@ function main() {
     "scripts/rename.test.ts",
     "scripts/sync-from-starter.ts",
     "scripts/sync-from-starter.test.ts",
+    "docs/starter-sync.md",
   ]);
   let changed = 0;
   for (const file of files) {
