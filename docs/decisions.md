@@ -122,7 +122,7 @@ Lint is type-aware (`oxlint --type-aware`, with `oxlint-tsgolint`).
 ## Yarn supply-chain settings
 
 `.yarnrc.yml` disables install scripts and refuses versions published less than
-7 days ago; CI installs with `--immutable`; Dependabot waits 7 days too. Release
+7 days ago; CI installs with `--immutable`; Renovate waits 7 days too. Release
 images carry an SBOM and provenance and are signed with cosign; `SECURITY.md`
 is the disclosure policy.
 **Why:** npm worms kept arriving through 2026, and the Cyber Resilience Act
@@ -168,3 +168,18 @@ development Keycloak, in deploy order. Keycloak is reached as
 the issuer must be one address for both.
 **Why:** the image is what ships, so there must be a one-command way to run it
 as it runs in production. Its secrets are public: it is not a deployment.
+
+## Projects follow the starter
+
+Projects are copies of the starter (`yarn rename`), not forks or packages.
+Renovate updates versions in every repository with one shared policy
+(`default.json`, a preset each `renovate.json` extends), and
+`yarn sync-from-starter` merges the starter's other changes into a project,
+file by file, with `yarn rename`'s rules applied. See `docs/starter-sync.md`.
+**Why:** a shared tooling package can't carry CI, Docker or app code, and
+needs a registry and releases for every change; merging the starter as a git
+remote conflicts on every renamed line. Renovate replaced Dependabot because
+Dependabot can't share a config between repositories.
+**Revisit when:** there are more than about five active projects, or parts of
+the starter (`ui`, `core`) stop changing per project: publish those as
+packages.

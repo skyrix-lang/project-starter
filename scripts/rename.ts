@@ -125,6 +125,9 @@ function main() {
     "yarn.lock",
     "scripts/rename.ts",
     "scripts/rename.test.ts",
+    "scripts/sync-from-starter.ts",
+    "scripts/sync-from-starter.test.ts",
+    "docs/starter-sync.md",
   ]);
   let changed = 0;
   for (const file of files) {
@@ -137,6 +140,13 @@ function main() {
     changed += 1;
   }
   console.log(`• Renamed to ${slug} ("${title}") in ${changed} files.`);
+
+  // Where `yarn sync-from-starter` starts from next time.
+  const commit = git("rev-parse", "HEAD").trim();
+  writeFileSync(
+    ".starter.json",
+    `${JSON.stringify({ slug, title, commit, ignore: [] }, null, 2)}\n`,
+  );
 
   console.log("• Updating yarn.lock…");
   execFileSync("yarn", ["install"], { stdio: "inherit" });
@@ -153,9 +163,10 @@ Done. Next:
                              on this machine: they hold the same ports
   rm -f .env && yarn setup   containers and database under the new name
   yarn verify && yarn test
-Review the diff before committing. Still the starter's, and yours to write: the
-description in package.json, and the site's description, logo and metadata in
-apps/web/index.html and packages/core/src/site.ts.`);
+Review the diff, and commit it with .starter.json. Still the starter's, and
+yours to write: the description in package.json, and the site's description,
+logo and metadata in apps/web/index.html and packages/core/src/site.ts.
+Later, \`yarn sync-from-starter\` brings in what changed in the starter.`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();

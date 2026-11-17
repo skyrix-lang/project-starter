@@ -3,7 +3,7 @@
 # the container starts, never baked in at build time.
 
 # One base for every stage, pinned by digest so a build is repeatable: the tag
-# alone can point at a different image tomorrow. Dependabot updates the digest.
+# alone can point at a different image tomorrow. Renovate updates the digest.
 FROM node:24-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8 AS base
 WORKDIR /app
 

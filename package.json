@@ -46,6 +46,7 @@
     "test:watch": "vitest",
     "setup": "tsx scripts/setup.ts",
     "rename": "tsx scripts/rename.ts",
+    "sync-from-starter": "tsx scripts/sync-from-starter.ts",
     "dev:session": "tsx scripts/dev-session.ts",
     "db:up": "sh scripts/db-up.sh",
     "db:down": "docker stop booking-db",
