@@ -64,30 +64,16 @@ commit it, it's where `yarn sync-from-starter` starts from.
 
 ## Keeping a project up to date with the starter
 
-**Versions:** Renovate, with the policy in this repository's `default.json`
-(weekly, versions at least 7 days old, npm minor and patch grouped, each major
-on its own, Node majors by hand). The starter and every project made from it
-have the same `renovate.json`, which only extends it, so a change to
-`default.json` applies everywhere. Install the Renovate GitHub app on each
-repository.
+- **Versions:** Renovate updates every repository with one policy, the
+  starter's `default.json`; each `renovate.json` only extends it. Install the
+  Renovate GitHub app on each repository.
+- **Everything else** (scripts, CI, Docker, configs, packages): in the project,
+  `yarn sync-from-starter --dry-run`, then `yarn sync-from-starter`. It merges
+  what changed in the starter since the commit in `.starter.json` with the
+  project's own changes, as `git merge` would. Review, `yarn verify`, commit.
 
-**Everything else** (scripts, CI, Docker, configs, the packages): in the
-project, run
-
-```bash
-yarn sync-from-starter --dry-run   # what would change
-yarn sync-from-starter             # apply it
-```
-
-It takes what changed in the starter since the commit in `.starter.json`,
-applies `yarn rename`'s rules to it, and merges it file by file with the
-project's own edits, as `git merge` would: conflicts get the usual markers.
-It reads the starter from `../project-starter` (or `--from <dir>`,
-`$STARTER_DIR`), or clones it. Files the project owns go in `.starter.json`'s
-`ignore` globs. It never touches `yarn.lock` (rebuilt by `yarn install`), and
-skips files in workspaces the project removed. Review the diff, run
-`yarn verify`, and commit it with `.starter.json`. A project made before
-`.starter.json` existed starts with `--base <starter commit it was made from>`.
+The whole process, conflicts and the rules for changing the starter:
+[docs/starter-sync.md](docs/starter-sync.md).
 
 ## Getting started
 
