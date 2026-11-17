@@ -2,9 +2,10 @@ name: Sync from starter
 
 # In a project made from project-starter: every Monday, or from the Actions tab
 # ("Run workflow"), runs `yarn sync-from-starter` and opens a pull request with
-# what changed in the starter. When the starter and the project changed the same
-# lines, Claude resolves the conflicts and runs `yarn verify` first; if it can't,
-# the pull request is a draft with the conflicts listed.
+# what changed in the starter. Claude then resolves any conflicts, adapts what
+# came from the starter to this project (names, senders, domains), runs
+# `yarn verify`, and leaves its notes in the pull request; conflicts it can't
+# resolve leave the pull request a draft, listing them.
 # In the starter itself (no .starter.json) it does nothing.
 # Setup and secrets: docs/starter-sync.md, "Automatic sync".
 
@@ -92,8 +93,11 @@ jobs:
             { echo "files<<EOF"; echo "$conflicts"; echo "EOF"; } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Claude resolves the conflicts
-        if: steps.sync.outputs.conflicts && env.HAS_CLAUDE == 'true'
+      # Every sync gets a pass by Claude, conflicts or not: the starter's new
+      # lines may hold values meant for the starter (a sender, a domain, a
+      # name yarn rename doesn't know) that this project needs its own way.
+      - name: Claude adapts the sync to this project
+        if: steps.sync.outputs.changed && env.HAS_CLAUDE == 'true'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
@@ -101,29 +105,45 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
           claude_args: >-
-            --max-turns 60
+            --max-turns 80
             --allowedTools "Read,Edit,Write,Glob,Grep,Bash(yarn install),Bash(yarn format),Bash(yarn verify),Bash(yarn check),Bash(yarn lint),Bash(yarn test:unit),Bash(yarn api:generate),Bash(git diff:*),Bash(git status:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*)"
           prompt: |
             This repository is a project made from project-starter. `yarn sync-from-starter`
             just merged the starter's latest changes into it (docs/starter-sync.md explains
-            how), and these files have git conflict markers, between `<<<<<<< project` and
-            `>>>>>>> starter <commit>`:
+            how). The changes are staged: `git diff --cached` shows them, against this
+            project's own code. Read AGENTS.md, README.md and docs/decisions.md first, so
+            you know what this project is.
 
-            ${{ steps.sync.outputs.files }}
+            1. Conflicts. These files have git conflict markers, between
+               `<<<<<<< project` and `>>>>>>> starter <commit>` (none if the list is empty):
 
-            Resolve every conflict:
-            - Usually both sides added something in the same place: keep both.
-            - Where they truly disagree, the project's choices win (its names, features,
-              product decisions recorded in docs/decisions.md), and the starter's generic
-              improvement is kept around them when it still makes sense.
-            - Don't edit .starter.json or yarn.lock by hand, and don't touch files without
-              conflicts unless `yarn verify` fails because of the merge.
-            Then run `yarn install` (if a package.json changed), `yarn format` and
-            `yarn verify`, and fix what the merge broke. Follow AGENTS.md. Don't commit.
+               ${{ steps.sync.outputs.files }}
 
-            Finally write `.starter-sync-notes.md` at the root: for each file, one or two
-            lines on how you resolved it, any choice the reviewer should check, and the
-            result of `yarn verify`.
+               - Usually both sides added something in the same place: keep both.
+               - Where they truly disagree, the project's choices win (its names, features,
+                 product decisions recorded in docs/decisions.md), and the starter's
+                 generic improvement is kept around them when it still makes sense.
+
+            2. Adapt. Read the whole staged diff for what came from the starter but is
+               the starter's, not this project's: example values, sender names and
+               addresses, domains, site or brand names (BookingHub, Booking, booking-*,
+               acme, example.com where the project uses its own), the demo bookings
+               feature, wording that describes the starter. Change them to this
+               project's (its name, domain and conventions are in its README, .env.example,
+               packages/core/src/site.ts and docs). Also check the new code fits the
+               project: an import of something the project removed, a setting the project
+               configures differently, a decision in docs/decisions.md it contradicts.
+               Change only what clearly needs it; list anything you're unsure of instead.
+
+            3. Check. Run `yarn install` (if a package.json changed), `yarn format` and
+               `yarn verify`, and fix what the merge broke. Follow AGENTS.md.
+
+            Don't edit .starter.json or yarn.lock by hand, and don't commit.
+
+            Finally write `.starter-sync-notes.md` at the root, for the reviewer: how you
+            resolved each conflict, what you adapted (file, from, to), anything you're
+            unsure of or that needs a human decision, and the result of `yarn verify`.
+            Keep it short.
 
       - id: commit
         if: steps.sync.outputs.changed
@@ -155,7 +175,7 @@ jobs:
               echo
             fi
             if [ -n "$notes" ]; then
-              echo "## How Claude resolved the conflicts"
+              echo "## Claude's notes"
               echo
               echo "$notes"
               echo

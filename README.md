@@ -74,8 +74,8 @@ commit it, it's where `yarn sync-from-starter` starts from.
   project's own changes, as `git merge` would. Review, `yarn verify`, commit.
 - **Automatically:** a workflow does that every Monday (or on demand from the
   Actions tab) and opens a pull request, with Claude resolving conflicts.
-  `@claude` in an issue or pull request asks Claude for any other work. Both
-  need a few secrets: see the guide.
+  Claude also reviews every pull request, and `@claude` in an issue or pull
+  request asks it for any other work. All need a few secrets: see the guide.
 
 The whole process, conflicts and the rules for changing the starter:
 [docs/starter-sync.md](docs/starter-sync.md).

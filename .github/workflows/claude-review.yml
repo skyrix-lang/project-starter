@@ -1,0 +1,62 @@
+name: Claude review
+
+# Claude reviews each pull request when it's opened (or marked ready), with
+# inline comments: bugs, AGENTS.md's rules, and how the change travels between
+# the starter and the projects made from it. Comment "@claude review" on a
+# pull request for another pass after new commits (claude.yml).
+# Setup: docs/starter-sync.md, "Claude on GitHub".
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+
+jobs:
+  review:
+    # Not drafts, and not Renovate's version bumps: CI checks those.
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Read AGENTS.md (and the AGENTS.md of each package the change touches) and
+            docs/decisions.md first: the review checks the change against them.
+
+            Look for, in this order:
+            1. Bugs: wrong behaviour, missed cases, security problems (AGENTS.md's
+               Security section), data leaks in logs.
+            2. Broken rules from AGENTS.md: tests missing for new behaviour, env
+               variables not in env.ts / .env.example / README, dependencies changed by
+               hand, decisions reversed without being recorded.
+            3. The starter and its projects. If `.starter.json` doesn't exist, this is
+               project-starter, the template other projects are made from and synced
+               with (docs/starter-sync.md): flag anything that will reach a project
+               wrong, such as a project-specific value written without the starter's
+               names (`@booking/*`, `booking-platform`, `booking-db`, `BookingHub`,
+               which yarn rename and yarn sync-from-starter replace) so it won't be
+               adapted, or a change that every project will have to edit, where a
+               setting would do. If `.starter.json` exists, this is a project made from
+               the starter: flag values that still belong to the starter (BookingHub,
+               Booking, booking-*, example senders or domains) and should be this
+               project's.
+
+            Post each finding as an inline comment on the line, with the fix. Then post
+            one summary comment with `gh pr comment`: what the change does, the findings
+            by importance, and "No issues found" if there are none. Don't comment on
+            style the formatter or linter already enforce. Be brief.

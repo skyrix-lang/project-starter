@@ -137,9 +137,11 @@ after merging something into the starter).
 1. It runs `yarn sync-from-starter` on a `sync-from-starter` branch. If a sync
    pull request is already open, it continues on that branch, so fixes made on
    it are kept.
-2. If there are conflicts, Claude resolves them (keeping the project's choices
-   where the two disagree), runs `yarn verify`, and explains what it did in the
-   pull request.
+2. Claude goes over it: resolves any conflicts (keeping the project's choices
+   where the two disagree), adapts what came from the starter but is the
+   starter's (an example sender, a domain, a name `yarn rename`'s rules don't
+   know) to the project, runs `yarn verify`, and explains what it did and what
+   it wasn't sure of in the pull request.
 3. It opens the pull request, or updates the open one. Conflicts Claude
    couldn't resolve (or with no Claude secret) leave it a draft, listing them.
 4. You review and merge. Nothing reaches `main` without you.
@@ -170,11 +172,19 @@ needs a token that can read it.
 
 ## Claude on GitHub
 
+`.github/workflows/claude-review.yml` reviews every pull request when it's
+opened or marked ready (not drafts, not Renovate's): bugs, `AGENTS.md`'s rules,
+and the starter and its projects. In the starter, it flags project-specific
+values written without the starter's names, which won't be adapted. In a
+project, it flags values that still belong to the starter. Findings come as
+inline comments, with a summary.
+
 `.github/workflows/claude.yml`, also synced to every project, lets you ask
 Claude for work from GitHub itself: mention `@claude` in an issue, a pull
 request comment or a review. For example, on a sync pull request:
 "@claude the e2e tests fail since this sync, fix them", or in an issue:
-"@claude implement this". It works on a branch and answers in the thread.
+"@claude implement this". "@claude review" asks for another review after new
+commits. It works on a branch and answers in the thread.
 Only people with write access to the repository can trigger it.
 
 Setup, once per repository: install the

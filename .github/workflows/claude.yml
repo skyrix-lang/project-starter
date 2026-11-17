@@ -1,8 +1,9 @@
 name: Claude
 
 # Mention @claude in an issue, a pull request, or a review comment, and Claude
-# answers or does the work there: fix a failing check, resolve conflicts left
-# on a "Sync from starter" pull request, implement an issue on a branch.
+# answers or does the work there: "@claude review" for another review, fix a
+# failing check, resolve conflicts left on a "Sync from starter" pull request,
+# implement an issue on a branch.
 # Only people with write access to the repository can trigger it.
 # Setup: docs/starter-sync.md, "Claude on GitHub".
 
