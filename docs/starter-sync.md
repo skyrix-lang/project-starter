@@ -8,7 +8,9 @@ features. Two mechanisms keep them close to it afterwards:
 | Dependency and image versions                                 | Renovate, in each repository, with the policy in `default.json` |
 | Everything else: scripts, CI, Docker, configs, packages, docs | `yarn sync-from-starter`, run in the project when you choose    |
 
-Both are recorded in `docs/decisions.md` ("Projects follow the starter").
+A GitHub workflow runs the sync for you each week and opens a pull request,
+with Claude resolving conflicts ("Automatic sync" below). Both are recorded in
+`docs/decisions.md` ("Projects follow the starter").
 
 ## Versions: Renovate
 
@@ -124,6 +126,61 @@ yarn sync-from-starter --base <commit> [--title "Display Name"] --dry-run
 The sync script isn't in such a project yet: run the starter's copy from the
 project's directory, `yarn tsx ../project-starter/scripts/sync-from-starter.ts --base <commit>`.
 It brings the script in.
+
+## Automatic sync
+
+`.github/workflows/sync-from-starter.yml`, which every project receives from
+the starter, runs the steps above on GitHub: every Monday at 05:00 UTC, and
+whenever you click **Run workflow** in the project's Actions tab (do that right
+after merging something into the starter).
+
+1. It runs `yarn sync-from-starter` on a `sync-from-starter` branch. If a sync
+   pull request is already open, it continues on that branch, so fixes made on
+   it are kept.
+2. If there are conflicts, Claude resolves them (keeping the project's choices
+   where the two disagree), runs `yarn verify`, and explains what it did in the
+   pull request.
+3. It opens the pull request, or updates the open one. Conflicts Claude
+   couldn't resolve (or with no Claude secret) leave it a draft, listing them.
+4. You review and merge. Nothing reaches `main` without you.
+
+When the starter has nothing new, it does nothing. In the starter itself (no
+`.starter.json`) it does nothing either.
+
+### Setup, once per project repository
+
+- **Settings → Actions → General → Workflow permissions:** "Read and write
+  permissions", and tick "Allow GitHub Actions to create and approve pull
+  requests".
+- **Secret `CLAUDE_CODE_OAUTH_TOKEN`** (Settings → Secrets and variables →
+  Actions): run `claude setup-token` in a terminal and paste the token; it
+  uses your Claude subscription. Or set `ANTHROPIC_API_KEY` instead, billed to
+  an API account. Without either, conflicts are left for you.
+- **Secret `STARTER_SYNC_TOKEN`** (recommended): a
+  [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new)
+  for the project repositories, with _Contents_, _Pull requests_ and
+  _Workflows_ set to read and write. Without it the workflow uses GitHub's
+  default token, which has two limits: CI doesn't run on the pull request it
+  opens (close and reopen it to start CI), and it can't push a change the
+  starter made to a workflow file (the run fails and says so; sync locally).
+
+The workflow runs `yarn sync-from-starter` without `--from`, so it clones the
+starter over HTTPS: the starter repository must stay public, or the workflow
+needs a token that can read it.
+
+## Claude on GitHub
+
+`.github/workflows/claude.yml`, also synced to every project, lets you ask
+Claude for work from GitHub itself: mention `@claude` in an issue, a pull
+request comment or a review. For example, on a sync pull request:
+"@claude the e2e tests fail since this sync, fix them", or in an issue:
+"@claude implement this". It works on a branch and answers in the thread.
+Only people with write access to the repository can trigger it.
+
+Setup, once per repository: install the
+[Claude GitHub app](https://github.com/apps/claude) on it, and set the same
+`CLAUDE_CODE_OAUTH_TOKEN` (or `ANTHROPIC_API_KEY`) secret. Running
+`/install-github-app` in Claude Code in a terminal does both.
 
 ## Changing the starter so projects can follow
 
