@@ -4,6 +4,9 @@ import { defineConfig } from "vitest/config";
 // (*.test.ts, *.test.tsx). Node for pure logic and the BFF; jsdom for React.
 export default defineConfig({
   test: {
+    // Never real mail, even when the shell exports SMTP settings: an empty
+    // SMTP_HOST means mail is only logged (apps/bff/src/mail.ts).
+    env: { SMTP_HOST: "" },
     projects: [
       {
         test: {

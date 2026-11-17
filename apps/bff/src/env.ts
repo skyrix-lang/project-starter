@@ -8,6 +8,13 @@ import { z } from "zod";
 export const logLevels = ["debug", "info", "warn", "error", "silent"] as const;
 export type LogLevel = (typeof logLevels)[number];
 
+/** An empty value (`SMTP_HOST=` in .env) counts as unset. */
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    schema.optional(),
+  );
+
 export const envSchema = z
   .object({
     NODE_ENV: z
@@ -29,8 +36,30 @@ export const envSchema = z
     LOG_LEVEL: z.enum(logLevels).default("info"),
     /** The built SPA, served in production. Unset in development (Vite serves it). */
     STATIC_DIR: z.string().optional(),
+    /**
+     * The SMTP server mail is sent through (src/mail.ts). Unset, mail is only
+     * logged, as in tests: nothing reaches anyone.
+     */
+    SMTP_HOST: optional(z.string()),
+    /** 465 or 2465 use TLS from the start; 587, 2587 or 25 must upgrade with STARTTLS. */
+    SMTP_PORT: optional(z.coerce.number().int().positive()).default(465),
+    SMTP_USER: optional(z.string()),
+    SMTP_PASSWORD: optional(z.string()),
+    /** The sender, such as `Acme <no-reply@acme.example>`: a domain the server may send for. */
+    MAIL_FROM: optional(z.string()),
   })
   .superRefine((env, context) => {
+    if (env.SMTP_HOST) {
+      for (const key of ["SMTP_USER", "SMTP_PASSWORD", "MAIL_FROM"] as const) {
+        if (!env[key]) {
+          context.addIssue({
+            code: "custom",
+            message: "Required when SMTP_HOST is set",
+            path: [key],
+          });
+        }
+      }
+    }
     if (env.NODE_ENV !== "production") return;
     if (env.SESSION_SECRET.length < 32 || env.SESSION_SECRET === "change-me") {
       context.addIssue({

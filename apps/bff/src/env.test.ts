@@ -60,4 +60,24 @@ describe("parseEnv", () => {
       parseEnv({ ...production, PUBLIC_URL: "http://localhost:3100" }),
     ).not.toThrow();
   });
+
+  it("needs credentials and a sender once an SMTP server is set", () => {
+    expect(() =>
+      parseEnv({ ...development, SMTP_HOST: "smtp.tem.scaleway.com" }),
+    ).toThrow(/SMTP_USER[\s\S]*SMTP_PASSWORD[\s\S]*MAIL_FROM/);
+    const env = parseEnv({
+      ...development,
+      SMTP_HOST: "smtp.tem.scaleway.com",
+      SMTP_USER: "project-id",
+      SMTP_PASSWORD: "secret-key",
+      MAIL_FROM: "no-reply@acme.example",
+    });
+    expect(env.SMTP_PORT).toBe(465);
+  });
+
+  it("treats an empty SMTP_HOST as unset", () => {
+    expect(
+      parseEnv({ ...development, SMTP_HOST: "" }).SMTP_HOST,
+    ).toBeUndefined();
+  });
 });

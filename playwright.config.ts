@@ -27,6 +27,9 @@ Object.assign(process.env, {
     process.env.E2E_OIDC_ISSUER ?? "http://localhost:8180/realms/booking",
   OIDC_CLIENT_ID: "booking-web",
   OIDC_CLIENT_SECRET: "booking-web-dev-secret",
+  // Tests never send real mail, even with SMTP settings in .env: an empty
+  // SMTP_HOST wins over the file and means mail is only logged (src/mail.ts).
+  SMTP_HOST: "",
 });
 
 export default defineConfig({

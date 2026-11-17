@@ -183,3 +183,16 @@ Dependabot can't share a config between repositories.
 **Revisit when:** there are more than about five active projects, or parts of
 the starter (`ui`, `core`) stop changing per project: publish those as
 packages.
+
+## Mail over SMTP, logged when unconfigured
+
+The BFF sends mail with Nodemailer through any SMTP server (Scaleway
+Transactional Email for now), configured by `SMTP_*` and `MAIL_FROM` at
+start. Without `SMTP_HOST` mail is logged and dropped; Vitest and the e2e
+run empty it, so tests can't reach a real inbox.
+**Why:** SMTP keeps the provider swappable without code changes, and one
+switch (is a server set?) is simpler to trust than a per-environment rule.
+**Revisit when:** a test must read a mail's content (a sign-in or invitation
+link): add a local catcher such as Mailpit to the dev containers and point
+the e2e run's `SMTP_HOST` at it, or when a provider's HTTP API is needed
+(templates, bounces, webhooks).

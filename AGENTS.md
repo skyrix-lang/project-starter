@@ -105,6 +105,9 @@ databases.
 - Log with `log` from `apps/bff/src/log.ts`, never `console`: one line per
   event, with the request's id added for you. Never log a secret, a token, a
   cookie or a query string.
+- Send mail with `mailer().send()` from `apps/bff/src/mail.ts`, never by
+  creating a Nodemailer transport. Without `SMTP_HOST` mail is only logged, and
+  tests never set it: never point a test at a real SMTP server.
 - Limit anything that sends email or costs money with `hit()` from
   `apps/bff/src/rate-limit.ts`.
 - Migrations are like Flyway: edit `packages/db/src/schema.ts`, run
