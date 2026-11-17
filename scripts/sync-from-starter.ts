@@ -261,6 +261,43 @@ function main() {
     const mode = (rev: string, path: string) =>
       git("ls-tree", rev, "--", path).split(" ")[0];
 
+    // A newer starter may sync differently: run its version of this script
+    // (and of rename.ts, which holds the naming rules) instead of this one.
+    const self = ["scripts/sync-from-starter.ts", "scripts/rename.ts"];
+    const stale = self.some(
+      (path) =>
+        !existsSync(path) || !readFileSync(path).equals(show(target, path)),
+    );
+    if (stale && !process.env.STARTER_SYNC_HANDOFF) {
+      const scripts = join(tmp, "scripts");
+      mkdirSync(scripts);
+      for (const path of self)
+        writeFileSync(join(tmp, path), show(target, path));
+      console.log("• The starter's sync script changed: running its version.");
+      const handoff = spawnSync(
+        "yarn",
+        [
+          "tsx",
+          join(tmp, self[0]!),
+          ...process.argv.slice(2),
+          "--from",
+          starter.dir,
+          "--ref",
+          target,
+          "--base",
+          base,
+          "--title",
+          config.title,
+        ],
+        {
+          stdio: "inherit",
+          env: { ...process.env, STARTER_SYNC_HANDOFF: "1" },
+        },
+      );
+      process.exitCode = handoff.status ?? 1;
+      return;
+    }
+
     const log = git("log", "--oneline", "--no-merges", `${base}..${target}`);
     console.log(
       `Starter ${base.slice(0, 7)} → ${target.slice(0, 7)}:\n${log.trimEnd().replace(/^/gm, "  ")}`,

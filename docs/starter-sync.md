@@ -89,7 +89,9 @@ starter's file now, and the project's file. Then:
 It never touches `yarn.lock`: when a `package.json` changed, it runs
 `yarn install`, which rewrites it. The sync tooling itself
 (`scripts/sync-from-starter.ts`, `scripts/rename.ts`, their tests and this
-guide) is always the starter's version, with the starter's names. When it's done, `.starter.json` records the new commit.
+guide) is always the starter's version, with the starter's names. When the
+starter's sync script is newer than the project's, the project's hands off to
+it, so a sync always runs with the starter's latest rules. When it's done, `.starter.json` records the new commit.
 
 ### Where it reads the starter
 
