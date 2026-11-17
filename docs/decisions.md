@@ -122,7 +122,7 @@ Lint is type-aware (`oxlint --type-aware`, with `oxlint-tsgolint`).
 ## Yarn supply-chain settings
 
 `.yarnrc.yml` disables install scripts and refuses versions published less than
-7 days ago; CI installs with `--immutable`; Dependabot waits 7 days too. Release
+7 days ago; CI installs with `--immutable`; Renovate waits 7 days too. Release
 images carry an SBOM and provenance and are signed with cosign; `SECURITY.md`
 is the disclosure policy.
 **Why:** npm worms kept arriving through 2026, and the Cyber Resilience Act

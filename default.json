@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Update policy shared by project-starter and every project made from it. Projects use it with `\"extends\": [\"github>skyrix-lang/project-starter\"]` in renovate.json.",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 10,
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "postUpdateOptions": ["yarnDedupeHighest"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "npm minor and patch updates in one pull request; each major gets its own, since it may need code changes.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm minor and patch",
+      "groupSlug": "npm-minor-patch"
+    },
+    {
+      "description": "All GitHub Actions in one pull request.",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "actions"
+    },
+    {
+      "description": "Postgres and Keycloak move together in docker/compose.yaml and the scripts that start them locally.",
+      "matchPackageNames": ["postgres", "quay.io/keycloak/keycloak"],
+      "groupName": "{{depName}}",
+      "groupSlug": "{{depNameSanitized}}"
+    },
+    {
+      "description": "Node major versions are chosen on purpose (.nvmrc, Dockerfile), not bumped to the next odd-numbered, short-lived release.",
+      "matchPackageNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Container images started by the local scripts (scripts/db-up.sh, scripts/keycloak-up.sh).",
+      "customType": "regex",
+      "managerFilePatterns": ["/^scripts/[^/]+\\.sh$/"],
+      "matchStrings": [
+        "(?<depName>(?:quay\\.io/keycloak/keycloak|postgres)):(?<currentValue>[0-9][^\\s]*)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

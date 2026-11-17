@@ -59,7 +59,35 @@ yarn rename acme-portal "Acme Portal"
 `@booking/*` package scope, the root package and image, the local containers,
 database, Keycloak realm and client, and the site name. It leaves the bookings
 feature alone: keep it to copy from, and remove it when the project has its
-own. Review the diff, then continue below.
+own. Review the diff, then continue below. It also writes `.starter.json`:
+commit it, it's where `yarn sync-from-starter` starts from.
+
+## Keeping a project up to date with the starter
+
+**Versions:** Renovate, with the policy in this repository's `default.json`
+(weekly, versions at least 7 days old, npm minor and patch grouped, each major
+on its own, Node majors by hand). The starter and every project made from it
+have the same `renovate.json`, which only extends it, so a change to
+`default.json` applies everywhere. Install the Renovate GitHub app on each
+repository.
+
+**Everything else** (scripts, CI, Docker, configs, the packages): in the
+project, run
+
+```bash
+yarn sync-from-starter --dry-run   # what would change
+yarn sync-from-starter             # apply it
+```
+
+It takes what changed in the starter since the commit in `.starter.json`,
+applies `yarn rename`'s rules to it, and merges it file by file with the
+project's own edits, as `git merge` would: conflicts get the usual markers.
+It reads the starter from `../project-starter` (or `--from <dir>`,
+`$STARTER_DIR`), or clones it. Files the project owns go in `.starter.json`'s
+`ignore` globs. It never touches `yarn.lock` (rebuilt by `yarn install`), and
+skips files in workspaces the project removed. Review the diff, run
+`yarn verify`, and commit it with `.starter.json`. A project made before
+`.starter.json` existed starts with `--base <starter commit it was made from>`.
 
 ## Getting started
 
@@ -91,6 +119,7 @@ origin, as in production.
 | `yarn api:generate`                               | OpenAPI document from the BFF's routes, then client, hooks and mocks      |
 | `yarn setup`                                      | prepare a checkout or worktree                                            |
 | `yarn rename <name> ["Display Name"]`             | once, in a new project: replace the starter's name everywhere             |
+| `yarn sync-from-starter [--dry-run]`              | in a project: merge in what changed in the starter since the last sync    |
 | `yarn dev:session [email] [--seed]`               | sign in locally without Keycloak, print the cookie                        |
 | `yarn db:generate --name=<x>` / `yarn db:migrate` | new migration / apply migrations                                          |
 | `yarn db:seed <email>`                            | demo bookings for a user who has signed in                                |
@@ -188,7 +217,7 @@ docker run -p 3000:3000 -e PUBLIC_URL=https://bookings.example.com \
 
 The runtime image holds Node, a single bundled `server.js` and the static
 files: no `node_modules`, no package manager, and it runs as a non-root user.
-Its base image is pinned by digest, and Dependabot updates it. The image has a
+Its base image is pinned by digest, and Renovate updates it. The image has a
 `HEALTHCHECK` on `GET /api/health` (503 when the database is unreachable), and
 on `SIGTERM` the server finishes the requests in progress before it exits.
 
@@ -234,7 +263,7 @@ content needs prerendering (see `docs/decisions.md`).
   origins can't send JSON.
 - Sign-ins are rate limited per client address (`apps/bff/src/rate-limit.ts`).
 - Supply chain: install scripts are disabled, versions younger than 7 days are
-  refused, CI installs from the lockfile only, and Dependabot has a cooldown.
+  refused, CI installs from the lockfile only, and Renovate waits 7 days too.
 
 ## Working with AI agents
 
