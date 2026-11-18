@@ -29,7 +29,8 @@ import { renameText, titleFromSlug, type Names } from "./rename";
 // Versions don't need this: Renovate updates them in every project, from the
 // policy in the starter's default.json.
 
-export const STARTER_REPO = "git@github.com:skyrix-lang/project-starter.git";
+export const STARTER_REPO =
+  "https://github.com/skyrix-lang/project-starter.git";
 export const CONFIG_FILE = ".starter.json";
 
 /** Never synced: the lockfile is rebuilt by `yarn install`, the Renovate preset

@@ -1,0 +1,205 @@
+name: Sync from starter
+
+# In a project made from project-starter: every Monday, or from the Actions tab
+# ("Run workflow"), runs `yarn sync-from-starter` and opens a pull request with
+# what changed in the starter. Claude then resolves any conflicts, adapts what
+# came from the starter to this project (names, senders, domains), runs
+# `yarn verify`, and leaves its notes in the pull request; conflicts it can't
+# resolve leave the pull request a draft, listing them.
+# In the starter itself (no .starter.json) it does nothing.
+# Setup and secrets: docs/starter-sync.md, "Automatic sync".
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Monday 05:00 UTC, before Renovate's run
+  workflow_dispatch:
+
+concurrency:
+  group: sync-from-starter
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write # Claude's action exchanges it for a short-lived token
+
+env:
+  BRANCH: sync-from-starter
+  # Secrets can't be tested in `if:`; these can.
+  HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+  HAS_SYNC_TOKEN: ${{ secrets.STARTER_SYNC_TOKEN != '' }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # A personal access token makes the pull request run CI; the default
+          # token can open it, but GitHub doesn't run workflows for it.
+          token: ${{ secrets.STARTER_SYNC_TOKEN || github.token }}
+
+      - id: project
+        name: Is this a project made from the starter?
+        run: |
+          if [ -f .starter.json ]; then echo "synced=true" >> "$GITHUB_OUTPUT"
+          else echo "No .starter.json: this is the starter, nothing to sync."; fi
+
+      # An open sync pull request is continued, so fixes made on it are kept;
+      # otherwise a new branch starts from the default branch.
+      - id: branch
+        if: steps.project.outputs.synced
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$pr" ]; then
+            git switch "$BRANCH"
+            echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          else
+            git switch -C "$BRANCH"
+          fi
+
+      - if: steps.project.outputs.synced
+        run: corepack enable
+      - if: steps.project.outputs.synced
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - if: steps.project.outputs.synced
+        run: yarn install --immutable
+
+      - id: sync
+        if: steps.project.outputs.synced
+        name: yarn sync-from-starter
+        run: |
+          set +e
+          yarn sync-from-starter 2>&1 | tee "$RUNNER_TEMP/sync.log"
+          set -e
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing new in the starter."
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          conflicts=$(git grep -l -e '^<<<<<<< project' -- . ':!scripts/sync-from-starter*' ':!docs/starter-sync.md' || true)
+          if [ -n "$conflicts" ]; then
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+            { echo "files<<EOF"; echo "$conflicts"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Every sync gets a pass by Claude, conflicts or not: the starter's new
+      # lines may hold values meant for the starter (a sender, a domain, a
+      # name yarn rename doesn't know) that this project needs its own way.
+      - name: Claude adapts the sync to this project
+        if: steps.sync.outputs.changed && env.HAS_CLAUDE == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --max-turns 80
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(yarn install),Bash(yarn format),Bash(yarn verify),Bash(yarn check),Bash(yarn lint),Bash(yarn test:unit),Bash(yarn api:generate),Bash(git diff:*),Bash(git status:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*)"
+          prompt: |
+            This repository is a project made from project-starter. `yarn sync-from-starter`
+            just merged the starter's latest changes into it (docs/starter-sync.md explains
+            how). The changes are staged: `git diff --cached` shows them, against this
+            project's own code. Read AGENTS.md, README.md and docs/decisions.md first, so
+            you know what this project is.
+
+            1. Conflicts. These files have git conflict markers, between
+               `<<<<<<< project` and `>>>>>>> starter <commit>` (none if the list is empty):
+
+               ${{ steps.sync.outputs.files }}
+
+               - Usually both sides added something in the same place: keep both.
+               - Where they truly disagree, the project's choices win (its names, features,
+                 product decisions recorded in docs/decisions.md), and the starter's
+                 generic improvement is kept around them when it still makes sense.
+
+            2. Adapt. Read the whole staged diff for what came from the starter but is
+               the starter's, not this project's: example values, sender names and
+               addresses, domains, site or brand names (BookingHub, Booking, booking-*,
+               acme, example.com where the project uses its own), the demo bookings
+               feature, wording that describes the starter. Change them to this
+               project's (its name, domain and conventions are in its README, .env.example,
+               packages/core/src/site.ts and docs). Also check the new code fits the
+               project: an import of something the project removed, a setting the project
+               configures differently, a decision in docs/decisions.md it contradicts.
+               Change only what clearly needs it; list anything you're unsure of instead.
+
+            3. Check. Run `yarn install` (if a package.json changed), `yarn format` and
+               `yarn verify`, and fix what the merge broke. Follow AGENTS.md.
+
+            Don't edit .starter.json or yarn.lock by hand, and don't commit.
+
+            Finally write `.starter-sync-notes.md` at the root, for the reviewer: how you
+            resolved each conflict, what you adapted (file, from, to), anything you're
+            unsure of or that needs a human decision, and the result of `yarn verify`.
+            Keep it short.
+
+      - id: commit
+        if: steps.sync.outputs.changed
+        run: |
+          notes=""
+          if [ -f .starter-sync-notes.md ]; then
+            mv .starter-sync-notes.md "$RUNNER_TEMP/notes.md"
+            notes=$(cat "$RUNNER_TEMP/notes.md")
+          fi
+          git add -A
+          remaining=$(git grep -l -e '^<<<<<<< project' -- . ':!scripts/sync-from-starter*' ':!docs/starter-sync.md' || true)
+          target=$(jq -r .commit .starter.json | cut -c1-7)
+          git commit -q -m "Sync from project-starter ($target)"
+          if [ "$HAS_SYNC_TOKEN" != true ] && git diff --name-only HEAD~1 HEAD | grep -q '^\.github/workflows/'; then
+            echo "::error::The starter changed a workflow file. GitHub refuses that push from the default token: add the STARTER_SYNC_TOKEN secret (docs/starter-sync.md, \"Automatic sync\") or run yarn sync-from-starter locally."
+            exit 1
+          fi
+          git push --force-with-lease origin "$BRANCH"
+
+          log=$(sed -e '/^➤/d' -e '/^Next:/,$d' "$RUNNER_TEMP/sync.log")
+          {
+            echo "\`yarn sync-from-starter\`, run by the *Sync from starter* workflow."
+            echo
+            if [ -n "$remaining" ]; then
+              echo "> [!WARNING]"
+              echo "> Conflicts left to resolve (\`<<<<<<< project\` markers):"
+              # shellcheck disable=SC2016 # backticks for Markdown, not expansion
+              echo "$remaining" | sed 's/^/> - `/; s/$/`/'
+              echo
+            fi
+            if [ -n "$notes" ]; then
+              echo "## Claude's notes"
+              echo
+              echo "$notes"
+              echo
+            fi
+            echo "## Sync output"
+            echo
+            printf '%s\n' '```' "$log" '```'
+            echo
+            echo "Review the diff, run the app if behaviour changed, and merge."
+          } > "$RUNNER_TEMP/body.md"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          if [ -n "$remaining" ]; then echo "draft=true" >> "$GITHUB_OUTPUT"; fi
+
+      - if: steps.sync.outputs.changed
+        env:
+          GH_TOKEN: ${{ secrets.STARTER_SYNC_TOKEN || github.token }}
+          PR: ${{ steps.branch.outputs.pr }}
+          DRAFT: ${{ steps.commit.outputs.draft }}
+          TARGET: ${{ steps.commit.outputs.target }}
+        run: |
+          title="Sync from project-starter ($TARGET)"
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+            if [ -n "$DRAFT" ]; then gh pr ready "$PR" --undo || true; fi
+          else
+            gh pr create --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md" ${DRAFT:+--draft}
+          fi
