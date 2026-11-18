@@ -68,6 +68,9 @@ databases.
 - A new project from the starter (repository, secrets, auto-merge, Renovate):
   follow `docs/new-project.md`, stopping at each step marked **You**.
   `scripts/check-github.sh <owner/repo>` checks a project's setup.
+- Automatic deploys to a server after CI passes on `main`: follow
+  `docs/auto-deploy.md`, stopping at each step marked **You**. Never write a
+  server's address, user or port into a committed file: they go in variables.
 - Change dependencies with `yarn workspace <name> add|remove`, never by editing
   `package.json`, so `yarn.lock` stays in sync. Install scripts are disabled and
   versions younger than 7 days are refused (`.yarnrc.yml`).
