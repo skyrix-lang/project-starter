@@ -180,6 +180,14 @@ file by file, with `yarn rename`'s rules applied. See `docs/starter-sync.md`.
 needs a registry and releases for every change; merging the starter as a git
 remote conflicts on every renamed line. Renovate replaced Dependabot because
 Dependabot can't share a config between repositories.
+Pull requests merge themselves once CI passes (GitHub auto-merge, CI required
+on `main`, merge commits only: `scripts/setup-github.sh`): Renovate's
+non-major updates, and a sync that applied cleanly, which the starter
+triggers as soon as its `main` changes. A sync with conflicts, even ones
+Claude resolved, and Renovate majors wait for a person.
+**Why (auto-merge):** one person maintains the starter and its projects; a
+clean, green sync is the starter's reviewed change arriving unchanged, while a
+resolved conflict is a judgement call CI can't check.
 **Revisit when:** there are more than about five active projects, or parts of
 the starter (`ui`, `core`) stop changing per project: publish those as
 packages.
