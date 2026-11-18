@@ -63,6 +63,10 @@ feature alone: keep it to copy from, and remove it when the project has its
 own. Review the diff, then continue below. It also writes `.starter.json`:
 commit it, it's where `yarn sync-from-starter` starts from.
 
+The whole setup, from the clone to a GitHub repository with auto-merge, CI,
+Claude, Renovate and the starter sync, step by step (Claude can run most of
+it): [docs/new-project.md](docs/new-project.md).
+
 ## Keeping a project up to date with the starter
 
 - **Versions:** Renovate updates every repository with one policy, the

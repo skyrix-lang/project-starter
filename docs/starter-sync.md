@@ -162,6 +162,9 @@ When the starter has nothing new, it does nothing. In the starter itself (no
 
 ### Setup, once per project repository
 
+The steps in order, for a new project, with a check at the end:
+[new-project.md](new-project.md).
+
 - **Settings → Actions → General → Workflow permissions:** "Read and write
   permissions", and tick "Allow GitHub Actions to create and approve pull
   requests".

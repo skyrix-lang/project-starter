@@ -223,7 +223,15 @@ jobs:
           # A merge commit, like every merge here. Auto-merge waits for the
           # checks main requires (scripts/setup-github.sh); a sync that isn't
           # clean turns it off again, if an earlier run had turned it on.
-          if [ -n "$CLEAN" ]; then
+          # Only where main requires checks: without them there's nothing for
+          # auto-merge to wait for, and gh would merge before CI has run (a
+          # private repository on GitHub Free can't require checks).
+          base=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)
+          required=$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/$base" \
+            --jq 'any(.[]; .type == "required_status_checks")' 2>/dev/null || echo false)
+          if [ -n "$CLEAN" ] && [ "$required" != true ]; then
+            echo "::warning::A clean sync, left for you to merge: $base requires no checks (scripts/setup-github.sh)."
+          elif [ -n "$CLEAN" ]; then
             gh pr merge "$BRANCH" --auto --merge \
               || echo "::warning::Couldn't turn on auto-merge: allow it in the repository settings (scripts/setup-github.sh)."
           else
