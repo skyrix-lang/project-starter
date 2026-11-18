@@ -1,7 +1,8 @@
 #!/bin/sh
 # Checks that a project made from the starter is set up on GitHub: the
 # repository settings and ruleset (scripts/setup-github.sh), its secrets, the
-# files the sync needs, and its place in the starter's STARTER_PROJECTS.
+# files the sync needs, its place in the starter's STARTER_PROJECTS, Dependabot
+# (alerts on, its pull requests off) and Renovate's first run.
 # Usage: scripts/check-github.sh <owner/repo>
 # Needs `gh`, signed in as an admin of the repository and of the starter.
 # Prints one line per check and exits 1 if any fails. Changes nothing.
@@ -50,6 +51,12 @@ else
     *) ko "listed in $starter's STARTER_PROJECTS" ;;
   esac
 fi
+
+# Dependabot: alerts on (Renovate reads them), its own pull requests off.
+if gh api "repos/$repo/vulnerability-alerts" --silent 2>/dev/null; then ok "Dependabot alerts on"; else ko "Dependabot alerts on"; fi
+updates=$(gh api "repos/$repo" --jq '.security_and_analysis.dependabot_security_updates.status // "disabled"')
+check "Dependabot security updates off (Renovate opens the fixes)" "$updates" "disabled"
+if gh api "repos/$repo/contents/.github/dependabot.yml" --silent 2>/dev/null; then ko "no .github/dependabot.yml (Renovate updates versions)"; else ok "no .github/dependabot.yml"; fi
 
 dashboard=$(gh issue list -R "$repo" --state open --author 'app/renovate' --search 'Dependency Dashboard in:title' --json number --jq 'length')
 if [ "${dashboard:-0}" -gt 0 ]; then ok "Renovate has run (Dependency Dashboard issue)"; else ko "Renovate has run (no Dependency Dashboard issue yet: give the app access, then run a scan)"; fi
