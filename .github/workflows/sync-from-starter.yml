@@ -131,11 +131,14 @@ jobs:
 
             2. Adapt. Read the whole staged diff for what came from the starter but is
                the starter's, not this project's: example values, sender names and
-               addresses, domains, site or brand names (BookingHub, Booking, booking-*,
-               acme, example.com where the project uses its own), the demo bookings
-               feature, wording that describes the starter. Change them to this
-               project's (its name, domain and conventions are in its README, .env.example,
-               packages/core/src/site.ts and docs). Also check the new code fits the
+               addresses, domains, site or brand names (the starter's, which the rules
+               in `scripts/rename.ts` list; acme, example.com where the project uses
+               its own), the demo bookings feature, wording that describes the
+               starter. Change them to this project's (its names are `slug` and
+               `title` in `.starter.json`; its domain and conventions are in its
+               README, .env.example, packages/core/src/site.ts and docs). Never
+               change the project's own names, even where they contain a starter
+               word. Also check the new code fits the
                project: an import of something the project removed, a setting the project
                configures differently, a decision in docs/decisions.md it contradicts.
                Change only what clearly needs it; list anything you're unsure of instead.

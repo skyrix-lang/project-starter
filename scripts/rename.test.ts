@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isValidSlug, isValidTitle, renameText, titleFromSlug } from "./rename";
 
@@ -98,6 +99,16 @@ describe("renameText", () => {
       "Another user's booking behaves as if it doesn't exist (404).",
     ]) {
       expect(rename(kept)).toBe(kept);
+    }
+  });
+
+  // These prompts tell Claude which names are the starter's. Renamed in a
+  // project, they'd name the project's own as the starter's, so they refer to
+  // this file's rules instead and must come through unchanged.
+  it("leaves the Claude prompts in the workflows alone", () => {
+    for (const workflow of ["claude-review.yml", "sync-from-starter.yml"]) {
+      const content = readFileSync(`.github/workflows/${workflow}`, "utf8");
+      expect(rename(content)).toBe(content);
     }
   });
 });
