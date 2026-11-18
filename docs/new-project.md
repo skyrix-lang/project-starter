@@ -137,7 +137,35 @@ gh variable set STARTER_PROJECTS -R skyrix-lang/project-starter \
   only, add `acme-portal` the same way (Claude → **Configure**). If it's
   installed for all repositories, there's nothing to do.
 
-## 7. Check (Claude)
+## 7. Security alerts and notifications (You)
+
+- **Dependabot alerts: on.** Repository → **Settings → Advanced Security**
+  (or "Code security") → **Dependabot alerts → Enable**. Or, from a terminal:
+
+  ```bash
+  gh api -X PUT repos/skyrix-lang/acme-portal/vulnerability-alerts
+  ```
+
+  GitHub then lists known vulnerabilities in the **Security** tab, and
+  Renovate sees them: it opens a `[SECURITY]` pull request for each, on its
+  next pass (within hours, not on Monday), which merges itself once CI passes.
+  A fix published less than 7 days ago waits until it's 7 days old
+  (`.yarnrc.yml`), on purpose.
+
+- **Dependabot security updates: leave off**, and don't add a
+  `.github/dependabot.yml`. Renovate is the only bot opening pull requests:
+  Dependabot's would duplicate Renovate's, ignore `default.json` (the 7-day
+  wait, merge commits), get no secrets (the Claude review fails) and wait for
+  you to merge them.
+- **Not too many notifications** (once for your account, already done):
+  [github.com/settings/notifications](https://github.com/settings/notifications)
+  → **Dependabot alerts** → "Email weekly digest" (or GitHub only). Most
+  alerts are already fixed and merged when you read it; the digest still shows
+  one that's stuck (a major update, or no fix yet). To hear only about pull
+  requests that need you, set the repository's **Watch** menu to
+  "Participating and @mentions".
+
+## 8. Check (Claude)
 
 ```bash
 ~/Workspace/project-starter/scripts/check-github.sh skyrix-lang/acme-portal
@@ -156,17 +184,19 @@ scan has run. Then try the whole chain once:
 
 ## When something doesn't work
 
-| Symptom                                           | Cause, and the fix                                                                                                                         |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| The Claude review fails in about 2 seconds        | The Claude token is wrong (often an extra line pasted with it): set it again, then re-run the job.                                         |
-| The Claude review doesn't run                     | The pull request was opened as a draft: close and reopen it, or comment `@claude review`. Renovate's pull requests are skipped on purpose. |
-| CI doesn't run on a sync pull request             | `STARTER_SYNC_TOKEN` is missing: pull requests opened with GitHub's default token don't run workflows.                                     |
-| The sync fails on a workflow file                 | Same: the default token can't push workflow changes.                                                                                       |
-| Notify projects: "Couldn't reach" a repository    | The token doesn't cover that repository (step 4.1).                                                                                        |
-| A clean sync doesn't merge itself                 | `main` requires no checks (step 3; on a private repository, GitHub Pro), or auto-merge isn't allowed. The run's warning says which.        |
-| A sync pull request is a draft                    | Conflicts Claude couldn't resolve: fix the `<<<<<<<` markers on its branch, push, mark it ready.                                           |
-| No Dependency Dashboard                           | Renovate can't see the repository, or hasn't run yet (step 6).                                                                             |
-| `gh pr merge --auto`: "auto-merge is not allowed" | Step 3 wasn't run on this repository.                                                                                                      |
+| Symptom                                           | Cause, and the fix                                                                                                                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The Claude review fails in about 2 seconds        | The Claude token is wrong (often an extra line pasted with it): set it again, then re-run the job.                                                                      |
+| The Claude review doesn't run                     | The pull request was opened as a draft: close and reopen it, or comment `@claude review`. Renovate's pull requests are skipped on purpose.                              |
+| CI doesn't run on a sync pull request             | `STARTER_SYNC_TOKEN` is missing: pull requests opened with GitHub's default token don't run workflows.                                                                  |
+| The sync fails on a workflow file                 | Same: the default token can't push workflow changes.                                                                                                                    |
+| Notify projects: "Couldn't reach" a repository    | The token doesn't cover that repository (step 4.1).                                                                                                                     |
+| A clean sync doesn't merge itself                 | `main` requires no checks (step 3; on a private repository, GitHub Pro), or auto-merge isn't allowed. The run's warning says which.                                     |
+| A sync pull request is a draft                    | Conflicts Claude couldn't resolve: fix the `<<<<<<<` markers on its branch, push, mark it ready.                                                                        |
+| No Dependency Dashboard                           | Renovate can't see the repository, or hasn't run yet (step 6).                                                                                                          |
+| `gh pr merge --auto`: "auto-merge is not allowed" | Step 3 wasn't run on this repository.                                                                                                                                   |
+| A vulnerability alert gets no pull request        | Dependabot alerts are off (step 7), Renovate hasn't run since, the fix is a major update (waits for you, on the Dependency Dashboard), or there's no fixed version yet. |
+| Pull requests from Dependabot                     | Dependabot security updates are on, or a `.github/dependabot.yml` exists: turn them off and delete it (step 7), and close its pull requests.                            |
 
 ## Once, for every project
 
@@ -185,5 +215,6 @@ Already done; here for when a token expires or you start over.
   the `STARTER_PROJECTS` variable, and both secrets.
 - **Apps:** [Renovate](https://github.com/apps/renovate) and
   [Claude](https://github.com/apps/claude) installed on your account.
+- **Notifications:** Dependabot alerts as a weekly digest (step 7).
 
 How the sync and Renovate work: [starter-sync.md](starter-sync.md).

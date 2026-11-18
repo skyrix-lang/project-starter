@@ -39,6 +39,12 @@ The policy:
 - Everything but majors (minor, patch, digests, the weekly lockfile) merges
   itself, with a merge commit, once the checks `main` requires pass. Majors
   wait for you.
+- Security fixes don't wait for Monday: with Dependabot alerts on in the
+  repository, Renovate opens a `[SECURITY]` pull request on its next pass,
+  which merges itself like any other non-major update. Renovate's default
+  for these skips its own 7-day wait, but Yarn's still applies: a fix younger
+  than 7 days goes through once it's old enough. Dependabot's own pull
+  requests stay off ([new-project.md](new-project.md), step 7).
 
 To change the policy for every project, change `default.json` in the starter
 and merge it: Renovate reads it from the starter's default branch on its next
