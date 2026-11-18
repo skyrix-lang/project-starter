@@ -65,6 +65,9 @@ databases.
 - `yarn sync-from-starter` (in a project made from the starter) merges in
   the starter's changes since `.starter.json`; Renovate updates versions. Run
   it only when asked, and see `docs/starter-sync.md`.
+- A new project from the starter (repository, secrets, auto-merge, Renovate):
+  follow `docs/new-project.md`, stopping at each step marked **You**.
+  `scripts/check-github.sh <owner/repo>` checks a project's setup.
 - Change dependencies with `yarn workspace <name> add|remove`, never by editing
   `package.json`, so `yarn.lock` stays in sync. Install scripts are disabled and
   versions younger than 7 days are refused (`.yarnrc.yml`).
