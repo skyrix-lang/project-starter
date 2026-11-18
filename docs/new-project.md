@@ -182,6 +182,11 @@ scan has run. Then try the whole chain once:
    review run; turn on auto-merge (`gh pr merge --auto --merge`, or ask Claude)
    and it merges itself once CI passes.
 
+## 9. Deploying automatically (optional)
+
+To have each merge into `main` deployed to a server once CI passes: the steps,
+SSH key and secrets included, are in [auto-deploy.md](auto-deploy.md).
+
 ## When something doesn't work
 
 | Symptom                                           | Cause, and the fix                                                                                                                                                      |
