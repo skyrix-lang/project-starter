@@ -44,17 +44,20 @@ jobs:
             2. Broken rules from AGENTS.md: tests missing for new behaviour, env
                variables not in env.ts / .env.example / README, dependencies changed by
                hand, decisions reversed without being recorded.
-            3. The starter and its projects. If `.starter.json` doesn't exist, this is
-               project-starter, the template other projects are made from and synced
-               with (docs/starter-sync.md): flag anything that will reach a project
-               wrong, such as a project-specific value written without the starter's
-               names (`@booking/*`, `booking-platform`, `booking-db`, `BookingHub`,
-               which yarn rename and yarn sync-from-starter replace) so it won't be
-               adapted, or a change that every project will have to edit, where a
-               setting would do. If `.starter.json` exists, this is a project made from
-               the starter: flag values that still belong to the starter (BookingHub,
-               Booking, booking-*, example senders or domains) and should be this
-               project's.
+            3. The starter and its projects. The starter's own names are the ones
+               the rules in `scripts/rename.ts` replace: read them there. (This prompt
+               names none of them itself, so yarn rename leaves it the same in every
+               project.) If `.starter.json` doesn't exist, this is project-starter,
+               the template other projects are made from and synced with
+               (docs/starter-sync.md): flag anything that will reach a project wrong,
+               such as a project-specific value written without the starter's names,
+               so it won't be adapted, or a change that every project will have to
+               edit, where a setting would do. If `.starter.json` exists, this is a
+               project made from the starter: its own names are in `.starter.json`
+               (`slug`, `title`); flag values that still belong to the starter (its
+               names, the demo bookings feature if the project removed it, example
+               senders or domains) and should be this project's. Never flag the
+               project's own names, even where they contain a starter word.
 
             Post each finding as an inline comment on the line, with the fix. Then post
             one summary comment with `gh pr comment`: what the change does, the findings
