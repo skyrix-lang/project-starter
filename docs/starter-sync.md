@@ -36,6 +36,9 @@ The policy:
 - The Node base image digest is updated; Node major versions are never bumped
   (they're chosen on purpose: `.nvmrc`, `docker/Dockerfile`).
 - The lockfile is refreshed weekly, for the dependencies of dependencies.
+- Everything but majors (minor, patch, digests, the weekly lockfile) merges
+  itself, with a merge commit, once the checks `main` requires pass. Majors
+  wait for you.
 
 To change the policy for every project, change `default.json` in the starter
 and merge it: Renovate reads it from the starter's default branch on its next
@@ -43,7 +46,10 @@ run. A project that needs an exception adds rules to its own `renovate.json`,
 after the `extends`.
 
 **Setup:** install the [Renovate GitHub app](https://github.com/apps/renovate)
-on the starter and on each project's repository. Check the config with
+on the starter and on each project's repository, and run
+`scripts/setup-github.sh <owner/repo>` once for each ("Auto-merge" below):
+without required checks, GitHub would merge an auto-merge pull request before
+CI has run. Check the config with
 `npx --package renovate renovate-config-validator default.json renovate.json`.
 
 ## Everything else: `yarn sync-from-starter`
@@ -130,9 +136,10 @@ It brings the script in.
 ## Automatic sync
 
 `.github/workflows/sync-from-starter.yml`, which every project receives from
-the starter, runs the steps above on GitHub: every Monday at 05:00 UTC, and
-whenever you click **Run workflow** in the project's Actions tab (do that right
-after merging something into the starter).
+the starter, runs the steps above on GitHub: as soon as something is merged
+into the starter's `main` (the starter's `notify-projects.yml` asks each
+project listed in its `STARTER_PROJECTS` variable), every Monday at 05:00 UTC,
+and whenever you click **Run workflow** in the project's Actions tab.
 
 1. It runs `yarn sync-from-starter` on a `sync-from-starter` branch. If a sync
    pull request is already open, it continues on that branch, so fixes made on
@@ -144,7 +151,11 @@ after merging something into the starter).
    it wasn't sure of in the pull request.
 3. It opens the pull request, or updates the open one. Conflicts Claude
    couldn't resolve (or with no Claude secret) leave it a draft, listing them.
-4. You review and merge. Nothing reaches `main` without you.
+4. A **clean** sync merges itself once CI passes: the starter merged without
+   conflicts, Claude's pass succeeded, and `STARTER_SYNC_TOKEN` is set (CI
+   doesn't run otherwise). Anything else waits for you to review and merge:
+   conflicts, even ones Claude resolved, or no Claude. To review a clean sync
+   anyway, click **Disable auto-merge** on its pull request before CI ends.
 
 When the starter has nothing new, it does nothing. In the starter itself (no
 `.starter.json`) it does nothing either.
@@ -165,6 +176,22 @@ When the starter has nothing new, it does nothing. In the starter itself (no
   default token, which has two limits: CI doesn't run on the pull request it
   opens (close and reopen it to start CI), and it can't push a change the
   starter made to a workflow file (the run fails and says so; sync locally).
+  Clean syncs only merge themselves with it.
+- **Auto-merge:** run `scripts/setup-github.sh <owner/repo>` (needs `gh`,
+  signed in as an admin). It allows auto-merge and merge commits only, and
+  adds a ruleset on `main`: changes through a pull request, with CI's checks
+  and Playwright jobs passing. Safe to run again.
+
+And once, in the starter:
+
+- **Variable `STARTER_PROJECTS`** (Settings → Secrets and variables → Actions →
+  Variables): the projects to notify, separated by spaces
+  (`owner/acme-portal owner/other`). Add each new project.
+- **Secret `STARTER_SYNC_TOKEN`**: the same token, covering those projects.
+  Its _Contents_ permission is what lets the starter send them the event.
+- `scripts/setup-github.sh` for the starter too, so your own pull requests
+  into it merge themselves: `gh pr merge --auto --merge` on a pull request
+  (or ask Claude to turn it on).
 
 The workflow runs `yarn sync-from-starter` without `--from`, so it clones the
 starter over HTTPS: the starter repository must stay public, or the workflow
@@ -197,6 +224,9 @@ Setup, once per repository: install the
 - **Merge pull requests into the starter with a merge commit**, not squash or
   rebase. Projects record starter commits in `.starter.json`; a squash leaves
   the recorded commit off `main`, and the next sync can't find it.
+  `scripts/setup-github.sh` allows only merge commits.
+- What's merged into the starter reaches every project within minutes, and
+  merges there by itself when it applies cleanly. Merge only what's ready.
 - Use the starter's names (`@booking/*`, `booking-platform`, `booking-db`, …)
   in new files, as the existing ones do: `yarn sync-from-starter` and
   `yarn rename` replace them. A new kind of name needs a rule in

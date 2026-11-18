@@ -5,7 +5,8 @@ name: Sync from starter
 # what changed in the starter. Claude then resolves any conflicts, adapts what
 # came from the starter to this project (names, senders, domains), runs
 # `yarn verify`, and leaves its notes in the pull request; conflicts it can't
-# resolve leave the pull request a draft, listing them.
+# resolve leave the pull request a draft, listing them. A clean sync (no
+# conflicts, and Claude's pass succeeded) merges itself once CI passes.
 # In the starter itself (no .starter.json) it does nothing.
 # Setup and secrets: docs/starter-sync.md, "Automatic sync".
 
@@ -13,6 +14,9 @@ on:
   schedule:
     - cron: "0 5 * * 1" # Monday 05:00 UTC, before Renovate's run
   workflow_dispatch:
+  # Sent by the starter's notify-projects workflow when its main changes.
+  repository_dispatch:
+    types: [starter-updated]
 
 concurrency:
   group: sync-from-starter
@@ -97,6 +101,7 @@ jobs:
       # lines may hold values meant for the starter (a sender, a domain, a
       # name yarn rename doesn't know) that this project needs its own way.
       - name: Claude adapts the sync to this project
+        id: claude
         if: steps.sync.outputs.changed && env.HAS_CLAUDE == 'true'
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
@@ -147,6 +152,12 @@ jobs:
 
       - id: commit
         if: steps.sync.outputs.changed
+        env:
+          # Clean: the starter merged without conflicts and Claude adapted it
+          # to this project. Only then may the pull request merge itself; it
+          # also needs STARTER_SYNC_TOKEN, since CI never runs on a pull
+          # request opened with the default token.
+          CLEAN: ${{ !steps.sync.outputs.conflicts && steps.claude.outcome == 'success' && env.HAS_SYNC_TOKEN == 'true' && 'true' || '' }}
         run: |
           notes=""
           if [ -f .starter-sync-notes.md ]; then
@@ -184,16 +195,22 @@ jobs:
             echo
             printf '%s\n' '```' "$log" '```'
             echo
-            echo "Review the diff, run the app if behaviour changed, and merge."
+            if [ -z "$CLEAN" ]; then
+              echo "Review the diff, run the app if behaviour changed, and merge."
+            else
+              echo "A clean sync: it merges itself once CI passes. Disable auto-merge to review it first."
+            fi
           } > "$RUNNER_TEMP/body.md"
           echo "target=$target" >> "$GITHUB_OUTPUT"
           if [ -n "$remaining" ]; then echo "draft=true" >> "$GITHUB_OUTPUT"; fi
+          if [ -n "$CLEAN" ] && [ -z "$remaining" ]; then echo "clean=true" >> "$GITHUB_OUTPUT"; fi
 
       - if: steps.sync.outputs.changed
         env:
           GH_TOKEN: ${{ secrets.STARTER_SYNC_TOKEN || github.token }}
           PR: ${{ steps.branch.outputs.pr }}
           DRAFT: ${{ steps.commit.outputs.draft }}
+          CLEAN: ${{ steps.commit.outputs.clean }}
           TARGET: ${{ steps.commit.outputs.target }}
         run: |
           title="Sync from project-starter ($TARGET)"
@@ -202,4 +219,13 @@ jobs:
             if [ -n "$DRAFT" ]; then gh pr ready "$PR" --undo || true; fi
           else
             gh pr create --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md" ${DRAFT:+--draft}
+          fi
+          # A merge commit, like every merge here. Auto-merge waits for the
+          # checks main requires (scripts/setup-github.sh); a sync that isn't
+          # clean turns it off again, if an earlier run had turned it on.
+          if [ -n "$CLEAN" ]; then
+            gh pr merge "$BRANCH" --auto --merge \
+              || echo "::warning::Couldn't turn on auto-merge: allow it in the repository settings (scripts/setup-github.sh)."
+          else
+            gh pr merge "$BRANCH" --disable-auto 2>/dev/null || true
           fi
