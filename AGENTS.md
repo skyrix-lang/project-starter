@@ -68,7 +68,8 @@ databases.
 - A new project from the starter (repository, secrets, auto-merge, Renovate):
   follow `docs/new-project.md`, stopping at each step marked **You**.
   `scripts/check-github.sh <owner/repo>` checks a project's setup.
-- Automatic deploys to a server after CI passes on `main`: follow
+- Nightly deploys to a server of what passed CI on `main`, with a database
+  backup first: follow
   `docs/auto-deploy.md`, stopping at each step marked **You**. Never write a
   server's address, user or port into a committed file: they go in variables.
 - Change dependencies with `yarn workspace <name> add|remove`, never by editing

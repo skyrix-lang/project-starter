@@ -65,8 +65,8 @@ commit it, it's where `yarn sync-from-starter` starts from.
 
 The whole setup, from the clone to a GitHub repository with auto-merge, CI,
 Claude, Renovate and the starter sync, step by step (Claude can run most of
-it): [docs/new-project.md](docs/new-project.md). To deploy each merge into
-`main` to a server automatically: [docs/auto-deploy.md](docs/auto-deploy.md).
+it): [docs/new-project.md](docs/new-project.md). To deploy `main` to a
+server every night, with a database backup first: [docs/auto-deploy.md](docs/auto-deploy.md).
 
 ## Keeping a project up to date with the starter
 
