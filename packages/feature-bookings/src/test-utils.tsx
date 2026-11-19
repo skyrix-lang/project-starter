@@ -8,8 +8,12 @@ import {
 } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { Toaster } from "@booking/ui";
 
-/** Renders `ui` with what a page needs: a router (for links) and a query client. */
+/**
+ * Renders `ui` with what a page needs: a router (for links), a query client
+ * and the toasts. Texts are English: vitest.setup-dom.ts sets up i18next.
+ */
 export async function renderPage(ui: ReactNode, url = "/bookings") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -21,7 +25,9 @@ export async function renderPage(ui: ReactNode, url = "/bookings") {
   await router.load();
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <Toaster label="Notifications" closeLabel="Close notification">
+        <RouterProvider router={router} />
+      </Toaster>
     </QueryClientProvider>,
   );
   return { ...result, queryClient };

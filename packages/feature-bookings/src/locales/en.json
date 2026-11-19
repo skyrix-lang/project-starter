@@ -1,0 +1,45 @@
+{
+  "title": "Bookings",
+  "text": "Manage and track all your appointments.",
+  "new": "New booking",
+  "empty": "No bookings found.",
+  "loading": "Loading bookings",
+  "filters": {
+    "label": "Filter bookings",
+    "all": "All",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled"
+  },
+  "status": {
+    "pending": "pending",
+    "confirmed": "confirmed",
+    "cancelled": "cancelled"
+  },
+  "card": {
+    "when": "{{date}} at {{time}}",
+    "duration_one": "{{count}} min",
+    "duration_other": "{{count}} min",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "confirmed": "Booking confirmed",
+    "cancelled": "Booking cancelled"
+  },
+  "form": {
+    "heading": "New booking",
+    "title": "Title",
+    "titleError": "Enter a title.",
+    "description": "Description",
+    "descriptionError": "Keep it under 2000 characters.",
+    "date": "Date",
+    "dateError": "Enter a valid date.",
+    "time": "Time",
+    "timeError": "Enter a time, like 09:30.",
+    "duration": "Duration (minutes)",
+    "durationError": "Enter whole minutes, up to a day (1440).",
+    "failed": "The booking couldn't be saved. Check the fields and try again.",
+    "save": "Save booking",
+    "close": "Close",
+    "saved": "Booking saved"
+  }
+}

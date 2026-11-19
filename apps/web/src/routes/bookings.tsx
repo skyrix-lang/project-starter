@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { bookingStatusSchema } from "@booking/core";
 import { BookingsPage } from "@booking/feature-bookings";
@@ -18,7 +19,8 @@ export const Route = createFileRoute("/bookings")({
   beforeLoad: ({ context, location }) =>
     requireUser(context.queryClient, location.href),
   component: function BookingsRoute() {
-    usePageMeta({ title: "Bookings", noindex: true });
+    const { t } = useTranslation();
+    usePageMeta({ title: t("bookings.title"), noindex: true });
     const { status } = Route.useSearch();
     return <Page status={status} />;
   },

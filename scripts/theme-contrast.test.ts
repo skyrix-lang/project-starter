@@ -80,6 +80,15 @@ describe("themes", () => {
     ]);
   });
 
+  it("reads a theme that starts with an @import", () => {
+    const imported = `@import "./fonts.css";\n${css}`;
+    expect(themes(imported).map((mode) => mode.name)).toEqual([
+      "light",
+      "dark",
+      ".dark",
+    ]);
+  });
+
   it("names the pairs below the minimum", () => {
     const tokens = { text: "#777777", page: "#ffffff", other: "#000000" };
     expect(failingPairs(tokens, [["text", ["page", "other"]]], 4.5)).toEqual([

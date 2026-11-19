@@ -1,13 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { site } from "@booking/core";
 import { cn } from "@booking/ui";
+import { LanguagePicker, ThemeToggle } from "./preferences-controls";
 import { UserMenu } from "./user-menu";
 
 const navLinks = [
-  { label: "Home", to: "/" },
-  { label: "Bookings", to: "/bookings" },
+  { label: "nav.home", to: "/" },
+  { label: "nav.bookings", to: "/bookings" },
 ] as const;
 
 const linkClass = (block = false) =>
@@ -20,6 +22,7 @@ const activeClass = "bg-primary-soft text-primary-soft-foreground";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   // Desktop and mobile navigation are switched with CSS breakpoints, never by
   // reading the screen size in render.
@@ -39,7 +42,7 @@ export function Header() {
           </Link>
 
           <nav
-            aria-label="Main"
+            aria-label={t("nav.main")}
             className="hidden md:flex items-center gap-1 ml-auto mr-4"
           >
             {navLinks.map((link) => (
@@ -50,17 +53,19 @@ export function Header() {
                 className={linkClass()}
                 activeProps={{ className: activeClass }}
               >
-                {link.label}
+                {t(link.label)}
               </Link>
             ))}
           </nav>
 
           <div className="flex items-center gap-2">
+            <LanguagePicker className="hidden md:block" />
+            <ThemeToggle className="hidden md:inline-flex" />
             <UserMenu />
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-label={t(mobileMenuOpen ? "nav.closeMenu" : "nav.openMenu")}
               aria-expanded={mobileMenuOpen}
               className="md:hidden p-2 rounded-md text-muted-foreground hover:bg-muted cursor-pointer"
             >
@@ -75,7 +80,10 @@ export function Header() {
       </div>
 
       {mobileMenuOpen && (
-        <nav aria-label="Main" className="md:hidden border-t px-4 py-2 bg-card">
+        <nav
+          aria-label={t("nav.main")}
+          className="md:hidden border-t px-4 py-2 bg-card"
+        >
           {navLinks.map((link) => (
             <Link
               key={link.to}
@@ -85,9 +93,14 @@ export function Header() {
               className={linkClass(true)}
               activeProps={{ className: activeClass }}
             >
-              {link.label}
+              {t(link.label)}
             </Link>
           ))}
+          {/* On a phone the header has no room for these. */}
+          <div className="flex items-center gap-2 mt-2 mb-1">
+            <LanguagePicker />
+            <ThemeToggle />
+          </div>
         </nav>
       )}
     </header>

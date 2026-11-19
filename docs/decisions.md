@@ -282,6 +282,56 @@ Text sized as "large" (3:1) isn't assumed, so every text pair is held to 4.5:1.
 **Revisit when:** the UI kit draws a new pair (a new token, or a token on a
 new background): add it to `scripts/theme-contrast.ts`.
 
+## Texts in react-i18next, English and French
+
+Every text on screen comes from JSON messages files, one per language and
+namespace (`app` in `apps/web/src/locales`, one per feature package), loaded
+by i18next with react-i18next and bundled, so there is no request and no
+flash of keys. Keys are type-checked against the English files and a test
+fails when another language misses one. The language is the visitor's choice
+from the header, else the first of their browser's languages that the site
+offers (`LANGUAGES` in `packages/core/src/site.ts`), else the first one; it
+sets `<html lang>`. Dates go through `Intl` in that language. The metadata
+crawlers read (`index.html`, the sitemap) stays in the default language.
+**Why:** projects are French and English, and the starter's screens (sign-in,
+errors, bookings) reach every project through the sync: written once with
+keys, each project gets them in its own language. react-i18next is the most
+used React i18n library, its JSON works with translation tools, and its
+plurals and interpolation are more than a homemade lookup would give for long.
+**Revisit when:** a page must rank in several languages: it then needs an
+address per language (`/fr/…`) and `hreflang`, which the language-in-storage
+choice doesn't give.
+
+## Client state in Zustand, persisted with a version
+
+What the visitor sets in this browser (theme, language) is a Zustand store
+saved to `localStorage` with `persist` (`apps/web/src/preferences.ts`), with a
+`version` and values checked by Zod as they're read back, so an old or edited
+value falls back to its default. Analytics consent keeps its own key, which
+has an expiry.
+**Why:** Zustand was already the recorded choice for client-only state, and
+this was the first need. `persist` gives one pattern for anything a project
+must remember, without a hand-written storage layer per feature.
+
+## Dark mode by a class, set before the first paint
+
+A theme's dark colours are a `.dark` block; the app puts the class on
+`<html>` when the visitor picks dark, or when the system is dark and they
+haven't chosen. `apps/web/public/theme.js`, a small classic script in
+`index.html`'s head, reads the stored choice before the page renders.
+**Why:** a class (not only `prefers-color-scheme`) lets the visitor override
+the system; a script file, not an inline one, keeps the strict CSP; running
+before the app's bundle avoids a white flash on every load. The contrast test
+reads `.dark` blocks, so the dark palette is held to AA too.
+
+## Toasts from Base UI
+
+`toast()` and `<Toaster>` in `@booking/ui` wrap Base UI's Toast: a polite
+announcement for confirmations, an assertive one that stays until closed for
+errors. Toasts confirm what just happened; form errors stay in the form.
+**Why:** Base UI is already the component base, so no new dependency, and its
+toasts handle focus (F6), screen reader announcements and pausing on hover.
+
 ## Real 404s for an SPA, from the route tree
 
 The build writes the app's route paths to `routes.json`, read from TanStack

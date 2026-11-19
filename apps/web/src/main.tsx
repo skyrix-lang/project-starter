@@ -3,8 +3,10 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { startAnalytics } from "./analytics";
+import { startI18n } from "./i18n";
 import { createQueryClient } from "./query-client";
 import { routeTree } from "./routeTree.gen";
+import { startTheme } from "./theme";
 import "./styles.css";
 
 const queryClient = createQueryClient(() => {
@@ -28,6 +30,8 @@ const router = createRouter({
 
 // Before the first render, so the banner knows whether to ask.
 startAnalytics();
+startI18n();
+startTheme();
 
 declare module "@tanstack/react-router" {
   interface Register {

@@ -1,10 +1,12 @@
 import { Link, useLocation } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { useGetMe } from "@booking/api";
 import { Button, buttonVariants } from "@booking/ui";
 
 export function UserMenu() {
   const me = useGetMe();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (me.isPending) {
     return <span aria-hidden="true" className="inline-block h-8 w-20" />;
@@ -19,7 +21,7 @@ export function UserMenu() {
         search={{ returnTo: location.href }}
         className={buttonVariants({ size: "sm" })}
       >
-        Sign in
+        {t("user.signIn")}
       </Link>
     );
   }
@@ -32,7 +34,7 @@ export function UserMenu() {
       {/* A form POST: the BFF ends the session, then the provider's. */}
       <form method="post" action="/auth/logout">
         <Button type="submit" variant="secondary" size="sm">
-          Sign out
+          {t("user.signOut")}
         </Button>
       </form>
     </div>
