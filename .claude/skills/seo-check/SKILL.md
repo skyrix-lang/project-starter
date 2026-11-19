@@ -44,7 +44,13 @@ curl -s http://localhost:3101/ ; curl -s http://localhost:3101/robots.txt
       its trailing slash).
 - [ ] Text files are served compressed (`curl -sI -H 'Accept-Encoding: br'`
       on a script shows `content-encoding: br`).
-- [ ] Unknown URLs show the not-found page with `noindex` (the SPA answers 200).
+- [ ] Unknown URLs answer 404 with the not-found page and `noindex`
+      (`curl -sI <PUBLIC_URL>/no-such-page`). A route's own "not found" (a
+      missing record) answers 200: it must render the not-found page too.
+- [ ] `www.` and the bare domain both reach the site, and the one that isn't
+      `PUBLIC_URL` redirects to it (301).
+- [ ] `favicon.ico`, `apple-touch-icon.png` and the Organization logo in
+      `index.html`'s JSON-LD are the project's own, made from its icon.
 - [ ] Every app page has `noindex` and is out of the sitemap.
 - [ ] `packages/core/src/site.ts` and `index.html` hold the real name and
       description.

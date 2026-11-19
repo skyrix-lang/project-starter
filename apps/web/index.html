@@ -14,7 +14,14 @@
       content="The simplest way to manage your bookings. Schedule, track, and organize all your appointments in one place."
     />
     <link rel="canonical" href="%PUBLIC_URL%/" />
+    <!--
+      Icons: the SVG for browsers, favicon.ico (48, 32 and 16 px) for those
+      that ask for it and for search results, and a 180 px square for phones'
+      home screens. Regenerate them from icon.svg when the brand changes.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- Dark mode before the first paint (public/theme.js). -->
     <script src="/theme.js"></script>
     <!--
@@ -47,14 +54,31 @@
     <meta name="twitter:image:alt" content="The BookingHub logo" />
     <!-- Google Analytics' measurement id, filled by the BFF: empty means off. -->
     <meta name="ga-measurement-id" content="%GA_MEASUREMENT_ID%" />
+    <!--
+      Structured data: the site, and the organisation behind it, whose logo
+      search results may show (a square image of at least 112 px).
+    -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "BookingHub",
-        "url": "%PUBLIC_URL%/",
-        "inLanguage": "en",
-        "description": "The simplest way to manage your bookings. Schedule, track, and organize all your appointments in one place."
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "%PUBLIC_URL%/#website",
+            "name": "BookingHub",
+            "url": "%PUBLIC_URL%/",
+            "inLanguage": "en",
+            "description": "The simplest way to manage your bookings. Schedule, track, and organize all your appointments in one place.",
+            "publisher": { "@id": "%PUBLIC_URL%/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "%PUBLIC_URL%/#organization",
+            "name": "BookingHub",
+            "url": "%PUBLIC_URL%/",
+            "logo": "%PUBLIC_URL%/apple-touch-icon.png"
+          }
+        ]
       }
     </script>
   </head>

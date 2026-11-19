@@ -12,6 +12,8 @@ const dist = mkdtempSync(join(tmpdir(), "static-test-"));
 mkdirSync(join(dist, "assets"));
 const page = `<html><head><link rel="canonical" href="%PUBLIC_URL%/" /><meta name="ga-measurement-id" content="%GA_MEASUREMENT_ID%" /></head><body>${"<p>Content</p>".repeat(100)}</body></html>`;
 writeFileSync(join(dist, "index.html"), page);
+const routes = JSON.stringify(["/", "/bookings", "/events/$id"]);
+writeFileSync(join(dist, "routes.json"), routes);
 const script = "console.log('app');".repeat(100);
 writeFileSync(join(dist, "assets", "app-1234.js"), script);
 writeFileSync(join(dist, "assets", "app-1234.js.gz"), gzipSync(script));
@@ -136,6 +138,76 @@ describe("compression", () => {
     const plain = await app.request("/bookings");
     expect(plain.headers.get("content-encoding")).toBeNull();
     expect(await plain.text()).toBe(html);
+  });
+});
+
+describe("unknown addresses", () => {
+  it("get the app's page with a 404 status, so search engines drop them", async () => {
+    const app = await createApp();
+
+    for (const path of ["/", "/bookings", "/bookings/", "/events/42"]) {
+      expect([path, (await app.request(path)).status]).toEqual([path, 200]);
+    }
+    for (const path of ["/nope", "/bookings/old", "/events"]) {
+      const response = await app.request(path, {
+        headers: { "Accept-Encoding": "br" },
+      });
+      expect([path, response.status]).toEqual([path, 404]);
+      // Still the app, which shows its not-found page.
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+      expect(
+        brotliDecompressSync(
+          Buffer.from(await response.arrayBuffer()),
+        ).toString(),
+      ).toContain("<p>Content</p>");
+    }
+  });
+
+  it("answer 200 with a build that has no route list", async () => {
+    rmSync(join(dist, "routes.json"));
+    try {
+      const app = await createApp();
+      expect((await app.request("/nope")).status).toBe(200);
+    } finally {
+      writeFileSync(join(dist, "routes.json"), routes);
+    }
+  });
+});
+
+describe("the www twin of PUBLIC_URL's host", () => {
+  it("redirects to PUBLIC_URL for good, keeping the path and query", async () => {
+    const app = await createApp();
+    const response = await app.request(
+      "https://www.bookings.example.com/bookings?status=confirmed",
+    );
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe(
+      "https://bookings.example.com/bookings?status=confirmed",
+    );
+  });
+
+  it("works the other way when PUBLIC_URL has www", async () => {
+    const app = await createApp({ PUBLIC_URL: "https://www.example.com" });
+    const response = await app.request("https://example.com/");
+
+    expect(response.headers.get("location")).toBe("https://www.example.com/");
+  });
+
+  it("leaves other hosts alone: a proxy may pass its own name", async () => {
+    const app = await createApp();
+    for (const url of ["http://app:3000/", "http://10.0.0.5:3000/"]) {
+      expect([url, (await app.request(url)).status]).toEqual([url, 200]);
+    }
+  });
+
+  it("leaves form posts alone: a redirect would drop their body", async () => {
+    const app = await createApp();
+    const response = await app.request(
+      "https://www.bookings.example.com/auth/sign-out",
+      { method: "POST" },
+    );
+    expect(response.status).not.toBe(301);
   });
 });
 

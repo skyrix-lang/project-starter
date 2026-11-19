@@ -126,6 +126,12 @@ To give up on the whole sync instead: `git checkout -- . && git clean -fd`.
 A file that conflicts on every sync is one the project has made its own,
 usually the README: add it to `ignore` and bring in what you want by hand.
 
+Images are files like any other: a new icon or share image in the starter
+(`apps/web/public/`) arrives with the starter's brand on it in a project that
+has none of its own. Replace it with the project's own, or add its path to
+`ignore`. After a change to `index.html`'s JSON-LD, check that the merged
+block is still valid JSON.
+
 ### Starting with a project made before `.starter.json`
 
 Find the starter commit it was made from (the starter's history around the

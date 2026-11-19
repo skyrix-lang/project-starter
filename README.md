@@ -227,8 +227,10 @@ and commit both. `yarn verify` fails when the generated client is stale.
   [translate.i18next.com](https://translate.i18next.com) translates a whole
   file; have a native speaker review it. A one-language site keeps one entry
   and one file per namespace; set `lang` in `apps/web/index.html` to it.
-- **Link previews:** replace `apps/web/public/og-image.png` (1200 × 630) with
-  the customer's own.
+- **Link previews and icons:** replace `apps/web/public/og-image.png`
+  (1200 × 630), `favicon.ico` (48, 32 and 16 px) and `apple-touch-icon.png`
+  (180 px, square corners) with the customer's own, and the name, URL and
+  logo in `index.html`'s JSON-LD.
 - **Pages:** replace a package's page in `apps/web/src/overrides.ts`. A route
   that doesn't exist is a type error. Add the customer's own routes in
   `apps/web/src/routes/`.
@@ -417,6 +419,21 @@ page's title, description, canonical URL, Open Graph tags and JSON-LD.
 `PUBLIC_PATHS` (`packages/core/src/site.ts`) appear in the sitemap. App pages
 add `noindex` when they render. A public page that has to rank on its own
 content needs prerendering (see `docs/decisions.md`).
+
+Unknown addresses answer 404: the build writes the app's routes to
+`routes.json` (from TanStack Router's route tree), and the BFF sends the
+app's page, which shows "Page not found", with a 404 status for any path that
+matches none. A route that exists but finds nothing (a missing record) still
+answers 200, so its page says `noindex` too.
+
+The `www.` twin of `PUBLIC_URL`'s host (or the bare domain, when
+`PUBLIC_URL` has `www.`) redirects to `PUBLIC_URL` with a 301, so the site
+isn't indexed twice. Point both names at the server, through a proxy that
+keeps the request's `Host` header (nginx-proxy does): other hosts are left
+alone, since a proxy may pass its own name.
+
+`index.html`'s JSON-LD describes the site and the organisation behind it,
+with its logo (`apple-touch-icon.png`), which search results may show.
 
 Link previews use Open Graph and X's card tags: title, description, URL, site
 name, locale and a share image (`apps/web/public/og-image.png`, 1200 × 630).

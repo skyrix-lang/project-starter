@@ -331,3 +331,20 @@ announcement for confirmations, an assertive one that stays until closed for
 errors. Toasts confirm what just happened; form errors stay in the form.
 **Why:** Base UI is already the component base, so no new dependency, and its
 toasts handle focus (F6), screen reader announcements and pausing on hover.
+
+## Real 404s for an SPA, from the route tree
+
+The build writes the app's route paths to `routes.json`, read from TanStack
+Router's generated route tree (`routesManifest` in `apps/web/vite.config.ts`),
+and the BFF answers 404 for any path that matches none, with the app's own
+page, which renders "Page not found". Without the file it answers 200
+everywhere, as before. The `www.` twin of `PUBLIC_URL`'s host redirects to
+`PUBLIC_URL` (301), and only that host: a proxy that passes its upstream name
+(`app:3000`) or an address must not loop.
+**Why:** a 200 for an unknown address is a "soft 404" to Google, and a typo
+or an old link looks like a page. The route tree is the single source of
+routes, so nothing is listed twice. Redirecting only the `www.` twin covers
+the usual duplicate without trusting the `Host` header beyond it.
+**Revisit when:** routes are prerendered (see "Client-only SPA"): the static
+pages then carry their own status. Or a route can tell from the URL alone
+that its record doesn't exist (a slug list known at build time).

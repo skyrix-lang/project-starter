@@ -20,7 +20,10 @@ test.describe("home page", () => {
     expect(html).toContain(
       '<meta property="og:site_name" content="BookingHub" />',
     );
-    expect(html).toContain('<meta property="og:locale" content="en_US" />');
+    // The site's language, such as en_US or fr_FR.
+    expect(html).toMatch(
+      /<meta property="og:locale" content="[a-z]{2,3}_[A-Z]{2}" \/>/,
+    );
     expect(html).toContain(
       `<meta property="og:image" content="${baseURL}/og-image.png" />`,
     );
@@ -40,15 +43,27 @@ test.describe("home page", () => {
   }) => {
     const html = await (await request.get("/")).text();
 
-    const json = html.match(
-      /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
-    )?.[1];
-    expect(JSON.parse(json!)).toMatchObject({
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: "BookingHub",
-      url: `${baseURL}/`,
-    });
+    const json = JSON.parse(
+      html.match(
+        /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
+      )![1]!,
+    );
+    expect(json["@context"]).toBe("https://schema.org");
+    // One item, or several in an @graph.
+    const items: Record<string, unknown>[] = json["@graph"] ?? [json];
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        "@type": "WebSite",
+        name: "BookingHub",
+        url: `${baseURL}/`,
+      }),
+    );
+    const organization = items.find((item) => item["@type"] === "Organization");
+    if (organization) {
+      // Its logo must be a file the site serves.
+      const logo = await request.get(String(organization.logo));
+      expect(logo.status()).toBe(200);
+    }
   });
 
   test("has one h1 and doesn't skip heading levels", async ({ page }) => {
@@ -191,4 +206,28 @@ test("sends the build's brotli and gzip files to browsers that accept them", asy
   const page = await request.get("/", { headers: { "Accept-Encoding": "br" } });
   expect(page.headers()["content-encoding"]).toBe("br");
   expect(await page.text()).toBe(html);
+});
+
+test("an unknown address answers 404, with the app's not-found page", async ({
+  page,
+}) => {
+  const response = await page.goto("/no-such-page");
+
+  expect(response!.status()).toBe(404);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Page not found" }),
+  ).toBeVisible();
+});
+
+test("serves the icons search results and phones ask for", async ({
+  request,
+}) => {
+  for (const [path, type] of [
+    ["/favicon.ico", "image/x-icon"],
+    ["/apple-touch-icon.png", "image/png"],
+  ]) {
+    const response = await request.get(path!);
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()["content-type"], path).toBe(type);
+  }
 });
