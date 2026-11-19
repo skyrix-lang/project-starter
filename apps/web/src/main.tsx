@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { startAnalytics } from "./analytics";
 import { createQueryClient } from "./query-client";
 import { routeTree } from "./routeTree.gen";
 import "./styles.css";
@@ -24,6 +25,9 @@ const router = createRouter({
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
 });
+
+// Before the first render, so the banner knows whether to ask.
+startAnalytics();
 
 declare module "@tanstack/react-router" {
   interface Register {

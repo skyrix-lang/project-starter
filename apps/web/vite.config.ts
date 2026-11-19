@@ -1,6 +1,10 @@
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
+import { brotliCompress, constants, gzip } from "node:zlib";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { bffDevPort, devPort } from "../../scripts/checkout.ts";
 
@@ -19,7 +23,11 @@ export default defineConfig(({ mode }) => {
       tanstackRouter({ target: "react", autoCodeSplitting: true }),
       react(),
       tailwindcss(),
-      devPublicUrl(publicUrl),
+      devPlaceholders({
+        PUBLIC_URL: publicUrl,
+        GA_MEASUREMENT_ID: env.GA_MEASUREMENT_ID ?? "",
+      }),
+      precompress(),
     ],
     server: {
       port,
@@ -35,11 +43,74 @@ export default defineConfig(({ mode }) => {
   };
 });
 
-/** The BFF fills %PUBLIC_URL% in index.html when it serves it; in development, Vite does. */
-function devPublicUrl(url: string): Plugin {
+/**
+ * The BFF fills %PUBLIC_URL% and %GA_MEASUREMENT_ID% in index.html when it
+ * serves it; in development, Vite does, from the repository's .env.
+ */
+function devPlaceholders(values: Record<string, string>): Plugin {
   return {
-    name: "dev-public-url",
+    name: "dev-placeholders",
     apply: "serve",
-    transformIndexHtml: (html) => html.replaceAll("%PUBLIC_URL%", url),
+    transformIndexHtml: (html) =>
+      Object.entries(values).reduce(
+        (page, [name, value]) => page.replaceAll(`%${name}%`, value),
+        html,
+      ),
+  };
+}
+
+const brotli = promisify(brotliCompress);
+const gzipAsync = promisify(gzip);
+
+/**
+ * Writes a brotli (`.br`) and a gzip (`.gz`) copy next to each text file of the
+ * build, at the strongest settings, so the BFF serves them without
+ * compressing on every request (apps/bff/src/app.ts). Not index.html, which
+ * the BFF fills in and compresses when it starts, nor source maps, which only
+ * developer tools load. Files under 1 kB aren't worth it.
+ */
+export function precompress(): Plugin {
+  let outDir = "";
+  return {
+    name: "precompress",
+    apply: "build",
+    configResolved: (config) => {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle: {
+      order: "post",
+      sequential: true,
+      handler: async () => {
+        const files = await readdir(outDir, { recursive: true });
+        await Promise.all(
+          files
+            .filter(
+              (file) =>
+                /\.(js|mjs|css|html|svg|json|txt|xml|webmanifest)$/.test(
+                  file,
+                ) && file !== "index.html",
+            )
+            .map(async (file) => {
+              const path = join(outDir, file);
+              if ((await stat(path)).size < 1024) return;
+              const source = await readFile(path);
+              const [br, gz] = await Promise.all([
+                brotli(source, {
+                  params: {
+                    [constants.BROTLI_PARAM_QUALITY]:
+                      constants.BROTLI_MAX_QUALITY,
+                    [constants.BROTLI_PARAM_SIZE_HINT]: source.length,
+                  },
+                }),
+                gzipAsync(source, { level: constants.Z_BEST_COMPRESSION }),
+              ]);
+              await Promise.all([
+                writeFile(`${path}.br`, br),
+                writeFile(`${path}.gz`, gz),
+              ]);
+            }),
+        );
+      },
+    },
   };
 }

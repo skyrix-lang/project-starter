@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Button, buttonVariants } from "@booking/ui";
+import { ConsentBanner } from "../components/consent-banner";
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { usePageMeta } from "../page-meta";
@@ -31,6 +32,7 @@ function RootLayout() {
         </div>
       </main>
       <Footer />
+      <ConsentBanner />
     </div>
   );
 }

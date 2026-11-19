@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
 import { requestId, type RequestIdVariables } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import { negotiateEncoding, precompress } from "./compression";
 import { env } from "./env";
 import { log, withLogContext } from "./log";
 import { api, openApiDocument } from "./routes/api";
@@ -17,7 +18,24 @@ import { robotsTxt, sitemapXml } from "./seo";
  * production, the built SPA. Tests call `createApp().request(...)`.
  */
 export function createApp() {
-  const { PUBLIC_URL, OIDC_ISSUER, STATIC_DIR } = env();
+  const { PUBLIC_URL, OIDC_ISSUER, STATIC_DIR, GA_MEASUREMENT_ID } = env();
+  // Google Analytics, only when a measurement id is set: its script, and
+  // where it sends measurements (Google's CSP guide for GA4). The browser
+  // loads it only once the visitor has accepted (apps/web/src/analytics.ts).
+  const analytics = GA_MEASUREMENT_ID
+    ? {
+        script: ["https://*.googletagmanager.com"],
+        img: [
+          "https://*.google-analytics.com",
+          "https://*.googletagmanager.com",
+        ],
+        connect: [
+          "https://*.google-analytics.com",
+          "https://*.analytics.google.com",
+          "https://*.googletagmanager.com",
+        ],
+      }
+    : { script: [], img: [], connect: [] };
   const app = new Hono<{ Variables: RequestIdVariables }>();
 
   // Every request gets an id (the proxy's `x-request-id` when it sent one),
@@ -46,11 +64,11 @@ export function createApp() {
       // Add the origins of any third-party script, image or API here.
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", ...analytics.script],
         styleSrc: ["'self'"],
-        imgSrc: ["'self'", "data:"],
+        imgSrc: ["'self'", "data:", ...analytics.img],
         fontSrc: ["'self'"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", ...analytics.connect],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         // Signing out is a form whose response redirects to the provider.
@@ -76,39 +94,64 @@ export function createApp() {
   // Unknown API and auth paths are JSON 404s, never the SPA's page.
   app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
   app.all("/auth/*", (c) => c.json({ error: "Not found" }, 404));
-  app.get("/robots.txt", (c) => c.text(robotsTxt(PUBLIC_URL)));
+  // Crawlers fetch these often; an hour's cache spares the server.
+  app.get("/robots.txt", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.text(robotsTxt(PUBLIC_URL));
+  });
   app.get("/sitemap.xml", (c) =>
-    c.body(sitemapXml(PUBLIC_URL), 200, { "Content-Type": "application/xml" }),
+    c.body(sitemapXml(PUBLIC_URL), 200, {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    }),
   );
 
   if (STATIC_DIR) {
     // The page's canonical URL and social metadata need the public address,
-    // which is set when the container starts, not when it was built.
-    const index = readFileSync(
-      join(STATIC_DIR, "index.html"),
-      "utf8",
-    ).replaceAll("%PUBLIC_URL%", PUBLIC_URL);
+    // and analytics its measurement id (validated in env.ts, empty when off):
+    // both are set when the container starts, not when it was built.
+    const index = readFileSync(join(STATIC_DIR, "index.html"), "utf8")
+      .replaceAll("%PUBLIC_URL%", PUBLIC_URL)
+      .replaceAll("%GA_MEASUREMENT_ID%", GA_MEASUREMENT_ID ?? "");
+    const compressedIndex = precompress(index);
+    // A file of the build, or its `.br` or `.gz` copy when the browser accepts
+    // it (apps/web/vite.config.ts writes them). serveStatic matches bare
+    // tokens only (`gzip`, not `gzip;q=0.8`), which is what browsers send; a
+    // client that weighs its encodings may get the file uncompressed, never in
+    // an encoding it refused. index.html, below, honours the weights. Every file says it varies by
+    // Accept-Encoding, so a cache never hands a brotli copy to a browser that
+    // can't read it. Headers go on the response serveStatic returns: it
+    // replaces any set on the context meanwhile.
+    const files = (cacheControl?: string): MiddlewareHandler => {
+      const serve = serveStatic({ root: STATIC_DIR, precompressed: true });
+      return async (c, next) => {
+        const response = await serve(c, next);
+        if (response) {
+          response.headers.set("Vary", "Accept-Encoding");
+          if (cacheControl) response.headers.set("Cache-Control", cacheControl);
+        }
+        return response;
+      };
+    };
     // Hashed file names never change, so they're cached for a year.
-    app.use(
-      "/assets/*",
-      serveStatic({
-        root: STATIC_DIR,
-        onFound: (_path, c) => {
-          c.header("Cache-Control", "public, max-age=31536000, immutable");
-        },
-      }),
-    );
-    // Other files of the build (logo.svg, icon.svg), by name. A path without an
-    // extension is a client route, handled below.
+    app.use("/assets/*", files("public, max-age=31536000, immutable"));
+    // Other files of the build (logo.svg, og-image.png), by name. A path
+    // without an extension is a client route, handled below.
     // index.html only through the route below, with PUBLIC_URL filled in; a
     // missing file is a 404, not the app's page.
     app.get("/index.html", (c) => c.redirect("/", 301));
-    app.get("/:file{[^/]+\\.[a-z0-9]+}", serveStatic({ root: STATIC_DIR }));
+    app.get("/:file{[^/]+\\.[a-z0-9]+}", files());
     app.get("/:file{[^/]+\\.[a-z0-9]+}", (c) => c.text("Not found", 404));
     // Every other path is a client route: the SPA decides what to show.
     app.get("*", (c) => {
       c.header("Cache-Control", "no-cache");
-      return c.html(index);
+      c.header("Vary", "Accept-Encoding");
+      const encoding = negotiateEncoding(c.req.header("Accept-Encoding"));
+      if (!encoding) return c.html(index);
+      return c.body(compressedIndex[encoding], 200, {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Content-Encoding": encoding,
+      });
     });
   }
 

@@ -17,6 +17,19 @@ test.describe("home page", () => {
     );
     expect(html).toContain('<meta property="og:title" content="BookingHub" />');
     expect(html).toContain(`<meta property="og:url" content="${baseURL}/" />`);
+    expect(html).toContain(
+      '<meta property="og:site_name" content="BookingHub" />',
+    );
+    expect(html).toContain('<meta property="og:locale" content="en_US" />');
+    expect(html).toContain(
+      `<meta property="og:image" content="${baseURL}/og-image.png" />`,
+    );
+    expect(html).toContain(
+      '<meta name="twitter:card" content="summary_large_image" />',
+    );
+    expect(html).toContain(
+      `<meta name="twitter:image" content="${baseURL}/og-image.png" />`,
+    );
     expect(html).not.toContain("%PUBLIC_URL%");
     expect(html).not.toContain('name="robots"');
   });
@@ -34,7 +47,7 @@ test.describe("home page", () => {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: "BookingHub",
-      url: baseURL,
+      url: `${baseURL}/`,
     });
   });
 
@@ -86,7 +99,7 @@ test("the sitemap lists public pages only", async ({ request, baseURL }) => {
 
   expect(response.status()).toBe(200);
   const sitemap = await response.text();
-  expect(sitemap).toContain(`<loc>${baseURL}</loc>`);
+  expect(sitemap).toContain(`<loc>${baseURL}/</loc>`);
   expect(sitemap).not.toContain("/bookings");
   expect(sitemap).not.toContain("/sign-in");
 });
@@ -121,4 +134,61 @@ test("hashed assets are cached for a year, the page isn't", async ({
   const script = (await page.text()).match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   const asset = await request.get(script!);
   expect(asset.headers()["cache-control"]).toContain("immutable");
+});
+
+test("the share image is served", async ({ request }) => {
+  const image = await request.get("/og-image.png");
+
+  expect(image.status()).toBe(200);
+  expect(image.headers()["content-type"]).toBe("image/png");
+});
+
+test("a page sets its own title and link preview once loaded", async ({
+  page,
+  baseURL,
+}) => {
+  await page.goto("/bookings");
+
+  await expect(page).toHaveTitle("Bookings | BookingHub");
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    "Bookings | BookingHub",
+  );
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    `${baseURL}/bookings`,
+  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    `${baseURL}/bookings`,
+  );
+});
+
+test("sends the build's brotli and gzip files to browsers that accept them", async ({
+  request,
+}) => {
+  const html = await (await request.get("/")).text();
+  const script = html.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
+  const plain = await request.get(script!, {
+    headers: { "Accept-Encoding": "identity" },
+  });
+  expect(plain.headers()["content-encoding"]).toBeUndefined();
+  expect(plain.headers()["vary"]).toBe("Accept-Encoding");
+
+  for (const encoding of ["br", "gzip"]) {
+    const compressed = await request.get(script!, {
+      headers: { "Accept-Encoding": encoding },
+    });
+    expect(compressed.headers()["content-encoding"]).toBe(encoding);
+    expect(compressed.headers()["vary"]).toBe("Accept-Encoding");
+    expect(Number(compressed.headers()["content-length"])).toBeLessThan(
+      (await plain.body()).length / 2,
+    );
+    // Playwright decodes it: the same file.
+    expect(await compressed.body()).toEqual(await plain.body());
+  }
+
+  const page = await request.get("/", { headers: { "Accept-Encoding": "br" } });
+  expect(page.headers()["content-encoding"]).toBe("br");
+  expect(await page.text()).toBe(html);
 });
