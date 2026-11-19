@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@booking/ui";
 import {
   chooseAnalytics,
@@ -21,6 +22,7 @@ export function ConsentBanner() {
   const { enabled, choice, settingsOpen } = useConsent();
   const visible = enabled && (choice === null || settingsOpen);
   const region = useRef<HTMLElement>(null);
+  const { t } = useTranslation();
 
   // When "Cookie settings" opens it, it takes focus, so keyboard and screen
   // reader users land on it.
@@ -76,23 +78,20 @@ export function ConsentBanner() {
         className="pointer-events-auto mx-auto max-w-2xl rounded-lg border bg-card p-5 text-card-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <p id="consent-title" className="font-semibold">
-          Cookies
+          {t("consent.title")}
         </p>
         <p
           id="consent-description"
           className="mt-1 text-sm text-muted-foreground"
         >
-          May we measure how this site is used, with Google Analytics? It sets
-          cookies and sends Google your visit. Nothing is measured unless you
-          accept, and you can change your mind any time from “Cookie settings”
-          at the bottom of the page.
+          {t("consent.description")}
         </p>
         <div className="mt-4 flex flex-wrap justify-end gap-3">
           <Button variant="secondary" onClick={() => choose("denied")}>
-            Decline
+            {t("consent.decline")}
           </Button>
           <Button variant="secondary" onClick={() => choose("granted")}>
-            Accept
+            {t("consent.accept")}
           </Button>
         </div>
       </section>

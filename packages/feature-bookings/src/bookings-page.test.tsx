@@ -96,6 +96,13 @@ describe("BookingsPage", () => {
     expect(
       within(card("Team Sync")).queryByRole("button", { name: "Confirm" }),
     ).toBeNull();
+    expect(await screen.findByText("Booking confirmed")).toBeVisible();
+  });
+
+  it("shows dates in the reader's format", async () => {
+    server.use(getListBookingsMockHandler([booking()]));
+    await renderPage(<BookingsPage />);
+    expect(await screen.findByText("Mar 10, 2030 at 09:00")).toBeVisible();
   });
 
   it("drops a booking that was removed meanwhile", async () => {
@@ -173,6 +180,16 @@ describe("BookingsPage", () => {
         duration: 20,
       });
       expect(screen.queryByRole("button", { name: "Save booking" })).toBeNull();
+      // Announced politely, and closable.
+      const saved = await screen.findByRole("dialog", {
+        name: "Booking saved",
+      });
+      // Base UI hides the close button from screen readers until the toasts
+      // are hovered or focused (F6 moves focus there).
+      await userEvent.click(within(saved).getByLabelText("Close notification"));
+      await waitFor(() =>
+        expect(screen.queryByText("Booking saved")).toBeNull(),
+      );
     });
   });
 });

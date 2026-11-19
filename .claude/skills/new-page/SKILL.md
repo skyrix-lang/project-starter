@@ -56,7 +56,10 @@ type for the content (`Event`, `Product`, `FAQPage`, `Article`).
   decoration), visible focus, WCAG 2.2 AA contrast. The e2e tests run axe.
 - Add it to `navLinks` in `apps/web/src/components/header.tsx` if needed.
 - Style with the theme's tokens (`bg-primary`, `text-muted-foreground`…), never
-  raw colours: branding is one CSS file per customer.
+  raw colours: branding is one CSS file per customer, and dark mode swaps the
+  tokens.
+- Texts, including the title and labels, come from
+  `apps/web/src/locales/<language>.json` through `t()`, in every language.
 - Style a link as a button with `buttonVariants()`; never a `<button>` in a link.
 - Breakpoints are CSS; never read the screen size in render.
 

@@ -1,0 +1,45 @@
+{
+  "title": "Réservations",
+  "text": "Gérez et suivez tous vos rendez-vous.",
+  "new": "Nouvelle réservation",
+  "empty": "Aucune réservation.",
+  "loading": "Chargement des réservations",
+  "filters": {
+    "label": "Filtrer les réservations",
+    "all": "Toutes",
+    "pending": "En attente",
+    "confirmed": "Confirmées",
+    "cancelled": "Annulées"
+  },
+  "status": {
+    "pending": "en attente",
+    "confirmed": "confirmée",
+    "cancelled": "annulée"
+  },
+  "card": {
+    "when": "{{date}} à {{time}}",
+    "duration_one": "{{count}} min",
+    "duration_other": "{{count}} min",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "confirmed": "Réservation confirmée",
+    "cancelled": "Réservation annulée"
+  },
+  "form": {
+    "heading": "Nouvelle réservation",
+    "title": "Titre",
+    "titleError": "Saisissez un titre.",
+    "description": "Description",
+    "descriptionError": "2000 caractères au maximum.",
+    "date": "Date",
+    "dateError": "Saisissez une date valide.",
+    "time": "Heure",
+    "timeError": "Saisissez une heure, par exemple 09:30.",
+    "duration": "Durée (minutes)",
+    "durationError": "Saisissez des minutes entières, jusqu’à une journée (1440).",
+    "failed": "La réservation n’a pas pu être enregistrée. Vérifiez les champs et réessayez.",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "saved": "Réservation enregistrée"
+  }
+}

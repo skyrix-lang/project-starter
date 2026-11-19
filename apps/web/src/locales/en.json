@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "main": "Main",
+    "home": "Home",
+    "bookings": "Bookings",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "preferences": {
+    "darkTheme": "Switch to dark theme",
+    "lightTheme": "Switch to light theme",
+    "language": "Language"
+  },
+  "user": {
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "footer": {
+    "rights": "© {{year}} {{name}}. All rights reserved.",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "cookieSettings": "Cookie settings"
+  },
+  "consent": {
+    "title": "Cookies",
+    "description": "May we measure how this site is used, with Google Analytics? It sets cookies and sends Google your visit. Nothing is measured unless you accept, and you can change your mind any time from “Cookie settings” at the bottom of the page.",
+    "decline": "Decline",
+    "accept": "Accept"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "text": "Please try again.",
+    "retry": "Try again"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "The page you are looking for does not exist.",
+    "home": "Back to home"
+  },
+  "signIn": {
+    "title": "Sign in",
+    "text": "You'll sign in with your organization's account.",
+    "continue": "Continue to sign in",
+    "errors": {
+      "AccessDenied": "Sign-in was cancelled or refused.",
+      "Expired": "The sign-in took too long. Please start again.",
+      "RateLimited": "Too many sign-in attempts. Wait a few minutes, then try again.",
+      "Unavailable": "The sign-in service isn't reachable right now. Try again later.",
+      "default": "Something went wrong signing you in. Please try again."
+    }
+  },
+  "home": {
+    "headline": "Book with <em>confidence</em>",
+    "text": "The simplest way to manage your bookings. Schedule, track, and organize all your appointments in one place.",
+    "cta": "View Bookings",
+    "scheduling": {
+      "title": "Easy Scheduling",
+      "text": "Book appointments in just a few clicks with our intuitive calendar interface."
+    },
+    "availability": {
+      "title": "Real-time Availability",
+      "text": "See available time slots instantly and never double-book again."
+    },
+    "confirmation": {
+      "title": "Instant Confirmation",
+      "text": "Get immediate booking confirmations and reminders for your appointments."
+    }
+  },
+  "bookings": {
+    "title": "Bookings"
+  },
+  "toast": {
+    "region": "Notifications",
+    "close": "Close notification"
+  }
+}

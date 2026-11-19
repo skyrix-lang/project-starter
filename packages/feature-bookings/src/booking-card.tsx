@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   getListBookingsQueryKey,
   throwUnexpected,
@@ -6,13 +7,30 @@ import {
   type Booking,
 } from "@booking/api";
 import type { BookingStatus } from "@booking/core";
-import { Badge, Button, Card } from "@booking/ui";
+import { Badge, Button, Card, toast } from "@booking/ui";
+import { NAMESPACE } from "./messages";
 import { statusTone } from "./status";
+
+/** "2026-03-14" as the reader writes dates, in their language: "Mar 14, 2026". */
+function formatDate(date: string, language: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Intl.DateTimeFormat(language, { dateStyle: "medium" }).format(
+    new Date(year!, month! - 1, day),
+  );
+}
 
 export function BookingCard({ booking }: { booking: Booking }) {
   const queryClient = useQueryClient();
+  const { t, i18n } = useTranslation(NAMESPACE);
   const update = useUpdateBooking({
     mutation: {
+      onSuccess: (_, { data }) => {
+        toast({
+          title: t(
+            data.status === "confirmed" ? "card.confirmed" : "card.cancelled",
+          ),
+        });
+      },
       // A booking removed meanwhile (404) isn't a failure: the refreshed list
       // just doesn't have it. Anything else goes to the error page.
       throwOnError: throwUnexpected(404),
@@ -27,14 +45,19 @@ export function BookingCard({ booking }: { booking: Booking }) {
     <Card data-testid="booking-card" className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-semibold">{booking.title}</h2>
-        <Badge tone={statusTone[booking.status]}>{booking.status}</Badge>
+        <Badge tone={statusTone[booking.status]}>
+          {t(`status.${booking.status}`)}
+        </Badge>
       </div>
       <p className="text-sm text-muted-foreground">{booking.description}</p>
       <div className="text-sm text-muted-foreground space-y-1">
         <p>
-          {booking.date} at {booking.time}
+          {t("card.when", {
+            date: formatDate(booking.date, i18n.language),
+            time: booking.time,
+          })}
         </p>
-        <p>{booking.duration} min</p>
+        <p>{t("card.duration", { count: booking.duration })}</p>
       </div>
       <div className="flex items-center gap-2 mt-auto pt-3 border-t">
         {booking.status !== "confirmed" && (
@@ -43,7 +66,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
             disabled={update.isPending}
             onClick={() => setStatus("confirmed")}
           >
-            Confirm
+            {t("card.confirm")}
           </Button>
         )}
         {booking.status !== "cancelled" && (
@@ -53,7 +76,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
             disabled={update.isPending}
             onClick={() => setStatus("cancelled")}
           >
-            Cancel
+            {t("card.cancel")}
           </Button>
         )}
       </div>

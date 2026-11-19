@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "main": "Navigation principale",
+    "home": "Accueil",
+    "bookings": "Réservations",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu"
+  },
+  "preferences": {
+    "darkTheme": "Passer au thème sombre",
+    "lightTheme": "Passer au thème clair",
+    "language": "Langue"
+  },
+  "user": {
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter"
+  },
+  "footer": {
+    "rights": "© {{year}} {{name}}. Tous droits réservés.",
+    "privacy": "Confidentialité",
+    "terms": "Conditions d’utilisation",
+    "cookieSettings": "Paramètres des cookies"
+  },
+  "consent": {
+    "title": "Cookies",
+    "description": "Pouvons-nous mesurer l’utilisation de ce site avec Google Analytics ? Il dépose des cookies et transmet votre visite à Google. Rien n’est mesuré sans votre accord, et vous pouvez changer d’avis à tout moment depuis « Paramètres des cookies » en bas de page.",
+    "decline": "Refuser",
+    "accept": "Accepter"
+  },
+  "error": {
+    "title": "Une erreur est survenue",
+    "text": "Veuillez réessayer.",
+    "retry": "Réessayer"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "text": "La page que vous cherchez n’existe pas.",
+    "home": "Retour à l’accueil"
+  },
+  "signIn": {
+    "title": "Connexion",
+    "text": "Vous vous connecterez avec le compte de votre organisation.",
+    "continue": "Continuer vers la connexion",
+    "errors": {
+      "AccessDenied": "La connexion a été annulée ou refusée.",
+      "Expired": "La connexion a pris trop de temps. Veuillez recommencer.",
+      "RateLimited": "Trop de tentatives de connexion. Patientez quelques minutes, puis réessayez.",
+      "Unavailable": "Le service de connexion est indisponible pour le moment. Réessayez plus tard.",
+      "default": "La connexion a échoué. Veuillez réessayer."
+    }
+  },
+  "home": {
+    "headline": "Réservez en toute <em>confiance</em>",
+    "text": "La façon la plus simple de gérer vos réservations. Planifiez, suivez et organisez tous vos rendez-vous au même endroit.",
+    "cta": "Voir les réservations",
+    "scheduling": {
+      "title": "Planification facile",
+      "text": "Réservez vos rendez-vous en quelques clics grâce à un calendrier intuitif."
+    },
+    "availability": {
+      "title": "Disponibilités en temps réel",
+      "text": "Voyez les créneaux libres instantanément et évitez les doubles réservations."
+    },
+    "confirmation": {
+      "title": "Confirmation immédiate",
+      "text": "Recevez aussitôt la confirmation et des rappels de vos rendez-vous."
+    }
+  },
+  "bookings": {
+    "title": "Réservations"
+  },
+  "toast": {
+    "region": "Notifications",
+    "close": "Fermer la notification"
+  }
+}

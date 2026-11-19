@@ -65,8 +65,13 @@ the result; `yarn verify` fails if it's stale. Never write API types by hand.
 - Forms: React Hook Form with `zodResolver(<schema from core>)` and the
   `Field`, `FieldLabel`, `FieldError`, `Input` components from `@booking/ui`.
 - URL state, such as filters, lives in the route's search params, not React
-  state. Client state that isn't server data goes in Zustand (ask first: it
-  isn't installed yet).
+  state. Client state that isn't server data goes in Zustand, persisted like
+  `apps/web/src/preferences.ts` when it must survive a reload.
+- Texts go in `src/locales/<language>.json` (one file per language in
+  `LANGUAGES`), exported from `src/messages.ts` with the package's namespace
+  and registered in `apps/web/src/i18n.ts`, as `feature-bookings` does.
+  Components use `useTranslation(NAMESPACE)`.
+- Confirm a finished action with `toast()` from `@booking/ui`.
 - Use the `new-page` skill to add the route in `apps/web`.
 
 ## 7. Tests

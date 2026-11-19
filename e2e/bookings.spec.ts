@@ -126,11 +126,14 @@ test.describe("new booking", () => {
 
     const card = bookingCard(page, title);
     await expect(card).toBeVisible();
-    await expect(card.getByText("2030-04-01 at 08:15")).toBeVisible();
+    await expect(card.getByText("Apr 1, 2030 at 08:15")).toBeVisible();
     await expect(card.getByText("pending", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Save booking" }),
     ).toBeHidden();
+    await expect(
+      page.getByRole("dialog", { name: "Booking saved" }),
+    ).toBeVisible();
   });
 
   test("shows what's wrong without sending anything", async ({ page }) => {

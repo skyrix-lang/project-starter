@@ -87,6 +87,9 @@ export function themes(css: string): { name: string; tokens: Tokens }[] {
             ? "dark"
             : selector;
       blocks.push({ name, tokens });
+    } else if (char === ";" && preludes.length === 0) {
+      // A top-level statement such as `@import "…";`, not part of a selector.
+      start = index + 1;
     }
   }
   const light = blocks.find((block) => block.name === "light");

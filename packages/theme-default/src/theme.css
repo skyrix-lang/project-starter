@@ -6,8 +6,13 @@
  * scripts/theme-contrast.test.ts checks every pair, in light mode and in any
  * dark mode defined here (a `prefers-color-scheme: dark` query or a `.dark`
  * block), and lists the pairs it checks.
+ *
+ * Dark mode is the `.dark` block: the app puts the class on <html> when the
+ * visitor picks dark, or follows their system (apps/web/src/theme.ts). A theme
+ * without a `.dark` block simply stays light.
  */
 :root {
+  color-scheme: light;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 0.5rem;
 
@@ -38,4 +43,36 @@
   --destructive: #dc2626;
   --destructive-soft: #fee2e2;
   --destructive-soft-foreground: #b91c1c;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --muted: #334155;
+  --muted-foreground: #cbd5e1;
+  --border: #334155;
+  --input: #94a3b8;
+  --ring: #60a5fa;
+
+  /* Light buttons with dark text: white on a mid blue is too dim here. */
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-foreground: #0f172a;
+  --primary-soft: #1e3a8a;
+  --primary-soft-foreground: #bfdbfe;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+
+  --success-soft: #14532d;
+  --success-soft-foreground: #bbf7d0;
+  --warning-soft: #78350f;
+  --warning-soft-foreground: #fde68a;
+  --destructive: #f87171;
+  --destructive-soft: #7f1d1d;
+  --destructive-soft-foreground: #fecaca;
 }

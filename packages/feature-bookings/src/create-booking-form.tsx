@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import type { z } from "zod";
 import { getListBookingsQueryKey, useCreateBooking } from "@booking/api";
 import { createBookingSchema } from "@booking/core";
@@ -11,7 +12,9 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  toast,
 } from "@booking/ui";
+import { NAMESPACE } from "./messages";
 
 type FormInput = z.input<typeof createBookingSchema>;
 type FormOutput = z.output<typeof createBookingSchema>;
@@ -23,6 +26,7 @@ type FormOutput = z.output<typeof createBookingSchema>;
 export function CreateBookingForm({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const create = useCreateBooking();
+  const { t } = useTranslation(NAMESPACE);
   const {
     register,
     handleSubmit,
@@ -38,10 +42,9 @@ export function CreateBookingForm({ onDone }: { onDone: () => void }) {
     await queryClient.invalidateQueries({
       queryKey: getListBookingsQueryKey(),
     });
+    toast({ title: t("form.saved") });
     onDone();
   });
-
-  const fieldError = (name: keyof FormInput) => errors[name]?.message;
 
   return (
     <Card>
@@ -50,33 +53,33 @@ export function CreateBookingForm({ onDone }: { onDone: () => void }) {
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-4 sm:grid-cols-2"
       >
-        <h2 className="text-lg font-semibold sm:col-span-2">New booking</h2>
+        <h2 className="text-lg font-semibold sm:col-span-2">
+          {t("form.heading")}
+        </h2>
         <Field invalid={!!errors.title} className="sm:col-span-2">
-          <FieldLabel>Title</FieldLabel>
+          <FieldLabel>{t("form.title")}</FieldLabel>
           <Input {...register("title")} />
-          <FieldError match={!!errors.title}>Enter a title.</FieldError>
+          <FieldError match={!!errors.title}>{t("form.titleError")}</FieldError>
         </Field>
         <Field invalid={!!errors.description} className="sm:col-span-2">
-          <FieldLabel>Description</FieldLabel>
+          <FieldLabel>{t("form.description")}</FieldLabel>
           <Input {...register("description")} />
           <FieldError match={!!errors.description}>
-            {fieldError("description")}
+            {t("form.descriptionError")}
           </FieldError>
         </Field>
         <Field invalid={!!errors.date}>
-          <FieldLabel>Date</FieldLabel>
+          <FieldLabel>{t("form.date")}</FieldLabel>
           <Input type="date" {...register("date")} />
-          <FieldError match={!!errors.date}>Enter a valid date.</FieldError>
+          <FieldError match={!!errors.date}>{t("form.dateError")}</FieldError>
         </Field>
         <Field invalid={!!errors.time}>
-          <FieldLabel>Time</FieldLabel>
+          <FieldLabel>{t("form.time")}</FieldLabel>
           <Input type="time" {...register("time")} />
-          <FieldError match={!!errors.time}>
-            Enter a time, like 09:30.
-          </FieldError>
+          <FieldError match={!!errors.time}>{t("form.timeError")}</FieldError>
         </Field>
         <Field invalid={!!errors.duration}>
-          <FieldLabel>Duration (minutes)</FieldLabel>
+          <FieldLabel>{t("form.duration")}</FieldLabel>
           <Input
             type="number"
             min={1}
@@ -84,7 +87,7 @@ export function CreateBookingForm({ onDone }: { onDone: () => void }) {
             {...register("duration", { valueAsNumber: true })}
           />
           <FieldError match={!!errors.duration}>
-            Enter whole minutes, up to a day (1440).
+            {t("form.durationError")}
           </FieldError>
         </Field>
         {create.isError && (
@@ -92,15 +95,15 @@ export function CreateBookingForm({ onDone }: { onDone: () => void }) {
             role="alert"
             className="text-sm text-destructive-soft-foreground sm:col-span-2"
           >
-            The booking couldn't be saved. Check the fields and try again.
+            {t("form.failed")}
           </p>
         )}
         <div className="flex gap-2 sm:col-span-2">
           <Button type="submit" disabled={isSubmitting}>
-            Save booking
+            {t("form.save")}
           </Button>
           <Button type="button" variant="ghost" onClick={onDone}>
-            Close
+            {t("form.close")}
           </Button>
         </div>
       </form>
