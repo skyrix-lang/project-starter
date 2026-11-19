@@ -80,4 +80,23 @@ describe("parseEnv", () => {
       parseEnv({ ...development, SMTP_HOST: "" }).SMTP_HOST,
     ).toBeUndefined();
   });
+
+  it("leaves analytics off unless a measurement id is set", () => {
+    expect(parseEnv(development).GA_MEASUREMENT_ID).toBeUndefined();
+    expect(
+      parseEnv({ ...development, GA_MEASUREMENT_ID: "" }).GA_MEASUREMENT_ID,
+    ).toBeUndefined();
+    expect(
+      parseEnv({ ...development, GA_MEASUREMENT_ID: "G-AB12CD34EF" })
+        .GA_MEASUREMENT_ID,
+    ).toBe("G-AB12CD34EF");
+  });
+
+  it("refuses anything but a GA4 measurement id: it lands in the page", () => {
+    for (const id of ["UA-1234-1", "G-ab12", 'G-AB12"><script>', "GTM-AB12"]) {
+      expect(() => parseEnv({ ...development, GA_MEASUREMENT_ID: id })).toThrow(
+        /GA_MEASUREMENT_ID/,
+      );
+    }
+  });
 });

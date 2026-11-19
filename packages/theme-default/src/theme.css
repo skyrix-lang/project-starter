@@ -1,8 +1,11 @@
 /*
  * The default brand. A customer's theme package redefines these variables and
  * nothing else: components only use the tokens (packages/ui/src/styles.css).
- * Keep text colours at WCAG 2.2 AA contrast (4.5:1) against their background:
- * the e2e axe checks fail otherwise.
+ * Keep text at WCAG 2.2 AA contrast (4.5:1) against its background, and input
+ * borders, the focus ring and buttons at 3:1 against the page:
+ * scripts/theme-contrast.test.ts checks every pair, in light mode and in any
+ * dark mode defined here (a `prefers-color-scheme: dark` query or a `.dark`
+ * block), and lists the pairs it checks.
  */
 :root {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -15,7 +18,8 @@
   --muted: #f1f5f9;
   --muted-foreground: #475569;
   --border: #e2e8f0;
-  --input: #cbd5e1;
+  /* An input's border is what shows it's a field: 3:1 against the page. */
+  --input: #7c8aa0;
   --ring: #3b82f6;
 
   --primary: #2563eb;

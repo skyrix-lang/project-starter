@@ -224,3 +224,60 @@ fees and an S3 API. Building on the server needs no registry.
 **Revisit when:** a project is used at night or its database takes minutes
 to dump (migrate without stopping, point-in-time recovery), or a project
 deploys somewhere other than one Docker server.
+
+## Google Analytics behind a consent banner, off by default
+
+GA4 is turned on by setting `GA_MEASUREMENT_ID` when the server starts; the
+BFF writes it into `index.html` (a `meta` tag, no extra request) and only then
+adds Google's origins to the CSP. Google's library is loaded by the app's own
+script once a visitor accepts in the banner, never before, so there is no
+inline script and no cookie or request to Google without consent. It starts
+with Consent Mode v2 denying everything, then grants `analytics_storage`
+only. The choice is kept in `localStorage` for six months, then asked again;
+"Cookie settings" in the footer reopens the banner, and declining after
+accepting stops measuring and deletes Google's cookies. Declining is a button
+like accepting, next to it. Page views of client-side navigations are left to
+GA4's enhanced measurement.
+**Why:** the ePrivacy rules as the CNIL applies them require consent before
+audience-measurement cookies, refusal as easy as acceptance and a way to
+withdraw; six months is the CNIL's recommended lifetime for the choice. Loading
+the script only after consent (Consent Mode's "basic" setup) sends Google
+nothing for visitors who refuse, unlike the "advanced" setup's cookieless
+pings. Enhanced measurement already counts history changes; sending page
+views from the router as well would count each one twice, unless every
+project remembered to turn the history option off in GA's admin. The cost:
+such a page view may carry the previous page's title, since the router
+changes the address before the page sets its title; its URL is right.
+**Revisit when:** a project needs another measurement tool, or one exempt
+from consent (a self-hosted, cookieless one such as Matomo configured per the
+CNIL's exemption): the banner and the store in `apps/web/src/analytics.ts`
+then become generic. Or when advertising needs ad storage: ask for it
+separately in the banner.
+
+## Precompressed assets, served by the BFF
+
+A small Vite plugin (`precompress` in `apps/web/vite.config.ts`, on
+`node:zlib`) writes brotli and gzip copies of the build's text files at
+maximum compression; the BFF serves them with `serveStatic`'s `precompressed`
+option and compresses `index.html` once at startup. Every static response
+carries `Vary: Accept-Encoding`.
+**Why:** compressing at build time costs nothing per request and allows
+brotli's strongest level (about 13% smaller than gzip's best on this build), which is
+too slow to run per request. Writing the plugin took 40 lines and no new
+dependency.
+**Revisit when:** a CDN or proxy in front compresses and caches on its own:
+the copies then only cost image size.
+
+## Theme contrast checked by a unit test
+
+`scripts/theme-contrast.test.ts` computes WCAG 2.2 contrast for each token
+pair the components use (text 4.5:1; input borders, the focus ring, buttons
+and invalid borders 3:1), in every `packages/theme-*` package, for light mode
+and each dark mode a theme defines (`prefers-color-scheme: dark`, `.dark` or
+`[data-theme]`). Its pair lists name the pairs the UI kit draws. The default
+theme's `--input` became `#7c8aa0` (3.3:1), from `#cbd5e1` (1.4:1).
+**Why:** axe only sees the states the e2e tests reach, in the theme the app
+imports; a customer theme, a dark mode or a hover colour isn't checked there.
+Text sized as "large" (3:1) isn't assumed, so every text pair is held to 4.5:1.
+**Revisit when:** the UI kit draws a new pair (a new token, or a token on a
+new background): add it to `scripts/theme-contrast.ts`.

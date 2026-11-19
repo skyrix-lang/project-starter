@@ -47,6 +47,15 @@ export const envSchema = z
     SMTP_PASSWORD: optional(z.string()),
     /** The sender, such as `Acme <no-reply@acme.example>`: a domain the server may send for. */
     MAIL_FROM: optional(z.string()),
+    /**
+     * Google Analytics 4's measurement id, such as G-XXXXXXXXXX. Unset, there
+     * is no analytics: no script, no consent banner, nothing added to the CSP.
+     */
+    GA_MEASUREMENT_ID: optional(
+      z
+        .string()
+        .regex(/^G-[A-Z0-9]{4,20}$/, "Expected an id like G-XXXXXXXXXX"),
+    ),
   })
   .superRefine((env, context) => {
     if (env.SMTP_HOST) {

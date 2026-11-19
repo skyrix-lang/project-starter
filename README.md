@@ -144,6 +144,7 @@ customer and any domain.
 | `STATIC_DIR`                                           | the built SPA (set in the image)                                                                      |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | the SMTP server mail goes through; unset, mail is only logged (see [Mail](#mail))                     |
 | `MAIL_FROM`                                            | the sender, on a domain the SMTP server may send for                                                  |
+| `GA_MEASUREMENT_ID`                                    | Google Analytics 4's id (`G-…`); unset, no analytics (see [Analytics](#analytics))                    |
 
 ## Authentication
 
@@ -211,7 +212,12 @@ and commit both. `yarn verify` fails when the generated client is stale.
 
 - **Branding:** copy `packages/theme-default` into a new theme package, change
   the CSS variables, and import it in `apps/web/src/styles.css`. Components use
-  only these tokens.
+  only these tokens. `scripts/theme-contrast.test.ts` (in `yarn verify`) fails
+  when a text colour drops below 4.5:1 on its background, or an input border,
+  the focus ring or a button below 3:1, in every `theme-*` package and in each
+  mode it defines (light, and dark if it has one).
+- **Link previews:** replace `apps/web/public/og-image.png` (1200 × 630) with
+  the customer's own.
 - **Pages:** replace a package's page in `apps/web/src/overrides.ts`. A route
   that doesn't exist is a type error. Add the customer's own routes in
   `apps/web/src/routes/`.
@@ -401,12 +407,53 @@ page's title, description, canonical URL, Open Graph tags and JSON-LD.
 add `noindex` when they render. A public page that has to rank on its own
 content needs prerendering (see `docs/decisions.md`).
 
+Link previews use Open Graph and X's card tags: title, description, URL, site
+name, locale and a share image (`apps/web/public/og-image.png`, 1200 × 630).
+Each page passes its own to `usePageMeta` (`apps/web/src/page-meta.ts`):
+`title`, `description`, `image`, `imageAlt`, `type`, and `jsonLd` for
+structured data such as an `Event` or a `FAQPage`. Platforms that don't run
+JavaScript (most link previews) see the home page's tags from `index.html`.
+
+## Analytics
+
+Google Analytics 4 is off until `GA_MEASUREMENT_ID` is set (`G-` and the id
+from the GA property's web stream). Then:
+
+- the BFF writes the id into `index.html` and adds Google's origins to the
+  CSP (script, image and connect sources only, never `'unsafe-inline'`);
+- a banner asks visitors whether they accept. Nothing is loaded from Google
+  and no cookie is set until they do. The choice is kept in the browser for
+  six months, then asked again, and "Cookie settings" in the footer changes it;
+- Google's library starts with Consent Mode v2 denying everything, then
+  grants analytics storage only. Advertising storage stays denied;
+- page views of client-side navigations come from GA4's enhanced measurement
+  ("Page changes based on browser history events", on by default). Leave it
+  on, or pages after the first aren't counted. Such a page view can carry the
+  previous page's title (the URL is right): the router changes the address
+  before the page sets its title;
+- turning on Google Signals in GA's admin makes the library call more of
+  Google's hosts (`stats.g.doubleclick.net`, `www.google.com`): add them to
+  the CSP in `apps/bff/src/app.ts` first, or the browser blocks them.
+
+Before turning it on, describe it in the site's privacy policy (the footer's
+"Privacy" link). The banner's text is in
+`apps/web/src/components/consent-banner.tsx`.
+
+## Compression
+
+`yarn build` writes a brotli (`.br`) and a gzip (`.gz`) copy of each text file
+of the SPA (`apps/web/vite.config.ts`). The BFF sends the smallest copy the
+browser accepts, with `Content-Encoding` and `Vary: Accept-Encoding`, and
+compresses `index.html` once when it starts. A proxy in front need not
+compress again: nginx leaves a response that already has an encoding alone.
+
 ## Security
 
 - Sign-in uses OIDC with PKCE through a confidential client. Sessions are
   server-side, the cookie is HttpOnly and SameSite=Lax (`__Host-` on https),
   and only a hash of the session token is stored.
-- The CSP allows scripts from `'self'` only, with no `'unsafe-inline'`. The
+- The CSP allows scripts from `'self'` only, with no `'unsafe-inline'` (plus
+  Google's, when [analytics](#analytics) is turned on). The
   other headers are HSTS, `X-Frame-Options: DENY`, `nosniff` and a strict
   referrer policy (`apps/bff/src/app.ts`). Add third-party origins there.
 - The CSRF check refuses cross-site form posts. There is no CORS, so other

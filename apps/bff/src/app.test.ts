@@ -141,7 +141,7 @@ describe("SEO files", () => {
     );
 
     const sitemap = await (await app.request("/sitemap.xml")).text();
-    expect(sitemap).toContain("<loc>https://bookings.example.com</loc>");
+    expect(sitemap).toContain("<loc>https://bookings.example.com/</loc>");
     expect(sitemap).not.toContain("/bookings<");
   });
 });

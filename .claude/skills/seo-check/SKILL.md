@@ -17,15 +17,18 @@ curl -s http://localhost:3101/ ; curl -s http://localhost:3101/robots.txt
 
 ## The HTML shell (what every URL returns first)
 
-- [ ] `<title>`, description (about 150 characters), canonical, `og:*` and
-      JSON-LD describe the home page, with `PUBLIC_URL`, never `localhost` or
-      a literal `%PUBLIC_URL%`.
+- [ ] `<title>`, description (about 150 characters), canonical, `og:*`,
+      `twitter:*` and JSON-LD describe the home page, with `PUBLIC_URL`, never
+      `localhost` or a literal `%PUBLIC_URL%`.
+- [ ] `og:image` is the project's own image (`apps/web/public/og-image.png`,
+      1200 × 630), not the starter's.
 - [ ] No `noindex` in the shell: app pages add it at runtime.
 
 ## Every public page
 
 - [ ] Listed in `PUBLIC_PATHS` (`packages/core/src/site.ts`), so in `sitemap.xml`.
-- [ ] Its own title through `usePageMeta`, and no `noindex`.
+- [ ] Its own title and description through `usePageMeta`, an image if it
+      has one, `jsonLd` where schema.org has a type for it, and no `noindex`.
 - [ ] One `h1`, no skipped headings, and `alt` text on images.
 - [ ] Main content renders without waiting for a signed-in API call.
 - [ ] Internal links use `<Link>`, and none go to `#`.
@@ -35,7 +38,12 @@ curl -s http://localhost:3101/ ; curl -s http://localhost:3101/robots.txt
 ## Site-wide
 
 - [ ] `robots.txt` allows public pages, blocks `/api/` and `/auth/`, and names
-      the sitemap.
+      the sitemap. App pages stay allowed: their `noindex` only works if
+      crawlers can load them.
+- [ ] The sitemap's addresses match the canonical links (the home page with
+      its trailing slash).
+- [ ] Text files are served compressed (`curl -sI -H 'Accept-Encoding: br'`
+      on a script shows `content-encoding: br`).
 - [ ] Unknown URLs show the not-found page with `noindex` (the SPA answers 200).
 - [ ] Every app page has `noindex` and is out of the sitemap.
 - [ ] `packages/core/src/site.ts` and `index.html` hold the real name and
