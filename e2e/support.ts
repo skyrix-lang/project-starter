@@ -42,6 +42,7 @@ export const test = base.extend<{
       // the browser reports the page's own status as an error: not the app's.
       const pageNotFound = (message: ConsoleMessage) =>
         message.text().startsWith("Failed to load resource") &&
+        message.text().includes("status of 404") &&
         message.location().url === page.url();
       page.on("console", (message) => {
         if (message.type() === "error" && fromApp() && !pageNotFound(message))

@@ -7,12 +7,18 @@ describe("routePaths", () => {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/files/{$name}.pdf': typeof FilesNameRoute
   '/events/$id': typeof EventsIdRoute
 }
 export interface FileRoutesByTo {
   '/other': typeof OtherRoute
 }`;
-    expect(routePaths(tree)).toEqual(["/", "/admin/", "/events/$id"]);
+    expect(routePaths(tree)).toEqual([
+      "/",
+      "/admin/",
+      "/files/{$name}.pdf",
+      "/events/$id",
+    ]);
   });
 
   it("refuses a file that isn't a route tree", () => {
@@ -60,6 +66,13 @@ describe("routeMatcher", () => {
   ])("doesn't know %s", (path) => {
     expect(matches(path)).toBe(false);
   });
+
+  it.each(["/posts/{-$page}.html", "/a/prefix{$}", "/a/b$c"])(
+    "refuses %s, which it can't match",
+    (route) => {
+      expect(() => routeMatcher([route])).toThrow(/isn't supported/);
+    },
+  );
 
   it("matches everything under a catch-all route", () => {
     const all = routeMatcher(["/", "/$"]);

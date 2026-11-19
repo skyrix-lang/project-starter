@@ -417,7 +417,8 @@ answers 200, so its page says `noindex` too.
 
 The `www.` twin of `PUBLIC_URL`'s host (or the bare domain, when
 `PUBLIC_URL` has `www.`) redirects to `PUBLIC_URL` with a 301, so the site
-isn't indexed twice. Point both names at the server: other hosts are left
+isn't indexed twice. Point both names at the server, through a proxy that
+keeps the request's `Host` header (nginx-proxy does): other hosts are left
 alone, since a proxy may pass its own name.
 
 `index.html`'s JSON-LD describes the site and the organisation behind it,

@@ -9,8 +9,10 @@
  * `FileRoutesByFullPath` interface.
  */
 export function routePaths(routeTree: string): string[] {
+  // Up to the interface's closing brace, alone on its line: a route such as
+  // `/files/{$name}.pdf` has braces of its own.
   const body = routeTree.match(
-    /export interface FileRoutesByFullPath \{([^}]*)\}/,
+    /export interface FileRoutesByFullPath \{\n([\s\S]*?)\n\}/,
   )?.[1];
   if (!body) throw new Error("No FileRoutesByFullPath in the route tree");
   return [...body.matchAll(/^\s*'([^']+)':/gm)].map((match) => match[1]!);
@@ -20,7 +22,11 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const withoutTrailingSlash = (path: string) =>
   path.length > 1 ? path.replace(/\/+$/, "") : path;
 
-/** One route path as a regular expression, following TanStack Router's syntax. */
+/**
+ * One route path as a regular expression, following TanStack Router's syntax.
+ * A segment it doesn't understand throws, so the build fails rather than a
+ * real page answering 404.
+ */
 function routeRegex(route: string) {
   const segments = withoutTrailingSlash(route).split("/").slice(1);
   let source = "";
@@ -31,6 +37,14 @@ function routeRegex(route: string) {
     } else if (/^\{-\$\w+\}$/.test(segment)) {
       // An optional parameter.
       source += "(?:/[^/]+)?";
+    } else if (
+      !/^[^{}$]*$/.test(segment) &&
+      !/^\$\w+$/.test(segment) &&
+      !/^[^{}$]*\{\$\w+\}[^{}$]*$/.test(segment)
+    ) {
+      throw new Error(
+        `Route ${route}: segment "${segment}" isn't supported by routeMatcher (packages/core/src/routes.ts)`,
+      );
     } else {
       // A parameter (`$id`), possibly with a prefix or suffix (`{$id}.json`).
       const pattern = segment
