@@ -11,7 +11,7 @@
 # version. Then the public address (PUBLIC_URL, or DEPLOY_URL) must answer over
 # https, or the database and the previous version are put back
 # (scripts/rollback-remote.sh).
-# Needs git, ssh, tar and curl. See "Deploying" in the README.
+# Needs git, ssh, tar and curl. See "Deploying" in docs/deployment.md.
 set -eu
 
 : "${DEPLOY_SSH:?Set DEPLOY_SSH to user@host}"
@@ -34,7 +34,7 @@ remote true || {
   exit 1
 }
 remote "test -f '$dir/.env.production'" || {
-  echo "$dir/.env.production is missing on the server: see the README." >&2
+  echo "$dir/.env.production is missing on the server: see docs/deployment.md, "Deploying"." >&2
   exit 1
 }
 

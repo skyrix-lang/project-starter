@@ -90,5 +90,6 @@ the result; `yarn verify` fails if it's stale. Never write API types by hand.
 - Break the feature once to confirm the new tests fail, then revert.
 - Check it in the running app with the `run-app` skill.
 - Have the change reviewed (the `reviewer` subagent in Claude Code).
-- Update the README for new commands, variables or concepts.
+- Document new commands, variables or concepts in the topic's page in `docs/`
+  (`docs/configuration.md` for a variable, `docs/development.md` for a command).
 - Say plainly whether the new data is per user or shared by everyone.
