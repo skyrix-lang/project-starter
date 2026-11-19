@@ -204,3 +204,23 @@ switch (is a server set?) is simpler to trust than a per-environment rule.
 link): add a local catcher such as Mailpit to the dev containers and point
 the e2e run's `SMTP_HOST` at it, or when a provider's HTTP API is needed
 (templates, bounces, webhooks).
+
+## Deploys ship in the starter, off until turned on
+
+The starter carries the whole deploy (`yarn deploy`, the server scripts,
+`docker/compose.production.yaml`, the nightly `Deploy` workflow), first built
+for zbeul. Nothing runs until a project sets the `DEPLOY_SSH` variable. Every
+night at 02:00 (Paris), the workflow deploys `main` if the server doesn't run
+it yet and CI passed on it; each deploy stops the app, backs the database up
+to Cloudflare R2 and proves the backup restores before migrating, and a
+failed migration, health check or public https check restores the database
+(only if a migration ran) and starts the previous image. Nights without a
+deploy back up all the same.
+**Why:** each project would otherwise rebuild the same scripts, and drift;
+shipped in the starter, a fix reaches every project with the next sync. At
+02:00 nobody uses the app, so stopping it for a minute makes the backup
+exact: nothing written between backup and rollback is lost. R2 has no egress
+fees and an S3 API. Building on the server needs no registry.
+**Revisit when:** a project is used at night or its database takes minutes
+to dump (migrate without stopping, point-in-time recovery), or a project
+deploys somewhere other than one Docker server.

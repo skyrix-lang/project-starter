@@ -10,11 +10,16 @@ anything fails, the previous version **and its data** stay or are put back,
 and GitHub notifies you that the run failed. Nights with nothing new, it backs
 up all the same.
 
-`zbeul` was the first project set up this way: its `scripts/deploy.sh`,
-`scripts/deploy-remote.sh`, `scripts/rollback-remote.sh`,
+**Everything ships with the starter, switched off.** `scripts/deploy.sh`
+(`yarn deploy`), `scripts/deploy-remote.sh`, `scripts/rollback-remote.sh`,
 `scripts/backup-remote.sh`, `scripts/restore-remote.sh`,
-`scripts/migrations-remote.sh`, `docker/compose.production.yaml` and
-`.github/workflows/deploy.yml` are the reference to copy from.
+`scripts/migrations-remote.sh`, `docker/compose.production.yaml`,
+`docker/backup.env.example` and `.github/workflows/deploy.yml` are in every
+project, renamed by `yarn rename`. The workflow does nothing until the
+project sets the `DEPLOY_SSH` variable, so the starter itself and projects
+that don't deploy never do. Turning it on is configuration only: a server, an
+R2 bucket, a key, two secrets and a variable. No code changes. `zbeul` was
+the first project to use it.
 
 Each step says who does it:
 
@@ -101,49 +106,48 @@ every night, 02:00 Paris ─▶ Deploy workflow (SSH, a key for this only, host 
 Automatic deploys run the project's own `yarn deploy`, so that must work
 first, from your machine.
 
-- **Claude:** if the project has no `scripts/deploy.sh` yet, copy
-  `scripts/deploy.sh`, `scripts/deploy-remote.sh`,
-  `scripts/rollback-remote.sh`, `scripts/backup-remote.sh`,
-  `scripts/restore-remote.sh`, `scripts/migrations-remote.sh` and
-  `docker/compose.production.yaml` from zbeul, with the project's names
-  (zbeul → the project's slug, in the `image:`, the image tags, the
-  throwaway container's name and the R2 folder too), and the "Deploying" and
-  "Backups" sections of zbeul's README. Add `"deploy": "sh scripts/deploy.sh"`
-  to `package.json`'s scripts. What they must keep:
-  - `scripts/deploy.sh` runs with only `git`, `ssh`, `tar` and `curl` (no
-    Node, no Yarn); reads `DEPLOY_SSH`, `DEPLOY_PORT`, `DEPLOY_DIR`,
-    `DEPLOY_URL` and `DEPLOY_SSH_OPTIONS` from the environment; and ends with
-    the public check: `/api/health` and `/` over https at `DEPLOY_URL`, or
-    else the `PUBLIC_URL` in the server's `.env.production`, retried for
-    about a minute, then the rollback and a failed exit. On success it
-    deletes `deploy-state` and writes the commit to `DEPLOY_DIR/deployed`.
-  - `docker/compose.production.yaml` names the app image
-    (`image: <slug>-app:current`), so the previous one can be kept.
+- **Claude:** check the project has the files listed above and a `deploy`
+  script in `package.json`, with the project's slug in place of
+  `booking-platform` (image `<slug>-app:current`, compose `name: <slug>`,
+  default `DEPLOY_DIR` `apps/<slug>`, R2 folder `<slug>/`). A project made
+  before they existed gets them with `yarn sync-from-starter` (or the next
+  automatic sync). Nothing else to change unless the server differs:
+  - another proxy network than `nginx-proxy`: the `networks:` of
+    `docker/compose.production.yaml`, and `BACKUP_NETWORK` (read by the
+    backup, restore and migration-count scripts);
+  - another time zone or hour than 02:00 Paris: step 2.
+
+  What the scripts guarantee, so a change keeps it:
+  - `scripts/deploy.sh` needs only `git`, `ssh`, `tar` and `curl` (no Node,
+    no Yarn); reads `DEPLOY_SSH`, `DEPLOY_PORT`, `DEPLOY_DIR`, `DEPLOY_URL`
+    and `DEPLOY_SSH_OPTIONS`; ends with the public check (`/api/health` and
+    `/` over https at `DEPLOY_URL`, or the server's `PUBLIC_URL`, for about a
+    minute), then the rollback and a failed exit. On success it deletes
+    `deploy-state` and writes the commit to `DEPLOY_DIR/deployed`.
   - `scripts/deploy-remote.sh`, in this order: tag the running image
-    `<slug>-app:previous`; `compose build app migrate`; `compose stop app`;
-    `BACKUP_COMPARE_ROWS=1 sh scripts/backup-remote.sh`, and on failure
-    `compose start app` and exit 1; write `deploy-state`; migrate and
-    `compose up -d --wait app`, running the rollback when either fails. Its
-    prune removes untagged images only.
-  - `scripts/rollback-remote.sh` restores the database with
-    `restore-remote.sh` only when `deploy-state` exists and the migration
-    count differs from the one it recorded (and starts the previous image
-    even if the restore fails, saying so loudly); then tags `previous` as
-    `current`, runs `compose up -d --no-build --force-recreate --wait app`
-    and deletes `deploy-state`.
+    `<slug>-app:previous`; build `app` and `migrate`; stop the app; back up
+    with `BACKUP_COMPARE_ROWS=1` (on failure: start the old app, exit 1);
+    write `deploy-state`; migrate and `compose up -d --wait app`, running the
+    rollback when either fails. Its prune removes untagged images only.
+  - `scripts/rollback-remote.sh` restores the database only when
+    `deploy-state` exists and the migration count changed (and starts the
+    previous image even if the restore fails, saying so loudly); then tags
+    `previous` as `current`, recreates the app and deletes `deploy-state`.
   - `scripts/restore-remote.sh` stops the app and restores in **one
-    transaction** (`psql --single-transaction`, dropping the `drizzle` and
-    `public` schemas first), so a failed restore leaves the database as it
-    was.
-  - `scripts/backup-remote.sh` and the others reach the database on the
-    proxy's Docker network (`BACKUP_NETWORK`, default `nginx-proxy`) with
-    the `postgres:<major>-alpine` image matching the server.
-- **You:** on the server, the one-time setup that README section lists:
-  Docker, the proxy, a database and its user (who must **own** the database:
-  a restore drops and creates `public`), and the project's
-  `.env.production`. Then step 6 (R2) before the first deploy: without
-  `backup.env` every deploy stops at the backup, with the old version
-  running. Then one deploy by hand:
+    transaction** (dropping the `drizzle` and `public` schemas first), so a
+    failed restore leaves the database as it was.
+
+- **You:** on the server, the one-time setup in the README's "Deploying"
+  section: Docker, the proxy, a database whose user **owns** it, and
+  `.env.production` (the production values of `.env.example`, including its
+  "Production" section):
+
+  ```bash
+  mkdir -p ~/apps/acme-portal && install -m 600 /dev/null ~/apps/acme-portal/.env.production && nano ~/apps/acme-portal/.env.production
+  ```
+
+  Then step 6 (R2): without `backup.env`, every deploy stops at the backup
+  with the old version running. Then one deploy by hand:
 
   ```bash
   DEPLOY_SSH=<user>@<server> DEPLOY_PORT=<port> yarn deploy
@@ -152,40 +156,29 @@ first, from your machine.
   If this doesn't work, stop here: GitHub would only fail the same way,
   with less to see.
 
-## 2. The workflow (Claude)
+## 2. The workflow (Claude, only to change it)
 
-Copy `.github/workflows/deploy.yml` from zbeul. Change only the default of
-`DEPLOY_DIR` (`apps/zbeul` → `apps/acme-portal`, the folder in the deploy
-user's home). It must keep:
+`.github/workflows/deploy.yml` is already there and needs no change for
+02:00 Paris time. How it works, for when it must change:
 
-- `on: schedule` with both crons, `"0 0 * * *"` and `"0 1 * * *"`, and
-  `workflow_dispatch`; `permissions: contents: read, actions: read` (to read
-  CI's result);
-- `concurrency: { group: deploy, cancel-in-progress: false }`;
-- a first job, `when`, with `if: vars.DEPLOY_SSH != ''`, that outputs
-  `go=true` for a manual run, or when `github.event.schedule` is the cron
-  that is 02:00 in Paris today (`TZ=Europe/Paris date +%z` is `+0200`:
-  `"0 0 * * *"`, otherwise `"0 1 * * *"`). Another time zone or hour: change
-  the two crons and that test together;
-- the `deploy` job: `needs: when`, `if: needs.when.outputs.go == 'true'`,
-  `environment: production`, checkout of `main`;
-- the key and `known_hosts` written from the two secrets, with an error if
-  either is empty, and
-  `DEPLOY_SSH_OPTIONS="-i $HOME/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes"`
-  written to `GITHUB_ENV` (`$HOME`, not `~`: a tilde isn't expanded inside a
-  variable);
-- a "Deploy or back up?" step: a manual run deploys; otherwise deploy only if
-  the server's `DEPLOY_DIR/deployed` isn't `main`'s commit and
-  `gh run list --workflow CI --branch main --commit <sha> --event push`
-  says `success`; a commit whose CI didn't pass gets a warning and a backup;
-- then `sh scripts/deploy.sh`, or, without a deploy,
-  `ssh … "cd '$DEPLOY_DIR/src' && sh scripts/backup-remote.sh"`;
-- a last step, `if: always()`, that deletes the key.
+- `on: schedule` with two crons, `"0 0 * * *"` and `"0 1 * * *"` (GitHub's
+  clock is UTC), and `workflow_dispatch`;
+- a first job, `when`, with `if: vars.DEPLOY_SSH != ''` (the off switch),
+  outputs `go=true` for a manual run, or when `github.event.schedule` is the
+  cron that is 02:00 in Paris today (`TZ=Europe/Paris date +%z` is `+0200`:
+  `"0 0 * * *"`, otherwise `"0 1 * * *"`). **Another time zone or hour:**
+  change both crons and that test together;
+- `concurrency: { group: deploy, cancel-in-progress: false }`: never
+  cancelled in the middle of a migration;
+- the `deploy` job (`environment: production`, checkout of `main`) writes
+  the key and `known_hosts` from the secrets, then decides: a manual run
+  deploys; a scheduled one deploys only if the server's
+  `DEPLOY_DIR/deployed` isn't `main`'s commit and `CI` passed on a push of
+  it, and otherwise only runs `scripts/backup-remote.sh` over ssh;
+- a last step, `if: always()`, deletes the key.
 
-Record it in the project's `docs/decisions.md` ("Main deploys itself, at
-night, after a proven backup", as zbeul does), and add a "Deploying
-automatically" section to its README that points here. Merging the workflow
-deploys nothing yet: `DEPLOY_SSH` isn't set.
+The only per-project setting is `DEPLOY_DIR`'s default (`apps/<slug>`), set
+by `yarn rename`. Merging changes deploys nothing until `DEPLOY_SSH` is set.
 
 ## 3. A key for GitHub only (You)
 
