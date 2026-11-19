@@ -281,3 +281,20 @@ imports; a customer theme, a dark mode or a hover colour isn't checked there.
 Text sized as "large" (3:1) isn't assumed, so every text pair is held to 4.5:1.
 **Revisit when:** the UI kit draws a new pair (a new token, or a token on a
 new background): add it to `scripts/theme-contrast.ts`.
+
+## Real 404s for an SPA, from the route tree
+
+The build writes the app's route paths to `routes.json`, read from TanStack
+Router's generated route tree (`routesManifest` in `apps/web/vite.config.ts`),
+and the BFF answers 404 for any path that matches none, with the app's own
+page, which renders "Page not found". Without the file it answers 200
+everywhere, as before. The `www.` twin of `PUBLIC_URL`'s host redirects to
+`PUBLIC_URL` (301), and only that host: a proxy that passes its upstream name
+(`app:3000`) or an address must not loop.
+**Why:** a 200 for an unknown address is a "soft 404" to Google, and a typo
+or an old link looks like a page. The route tree is the single source of
+routes, so nothing is listed twice. Redirecting only the `www.` twin covers
+the usual duplicate without trusting the `Host` header beyond it.
+**Revisit when:** routes are prerendered (see "Client-only SPA"): the static
+pages then carry their own status. Or a route can tell from the URL alone
+that its record doesn't exist (a slug list known at build time).

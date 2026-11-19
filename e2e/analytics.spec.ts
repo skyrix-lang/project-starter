@@ -112,8 +112,7 @@ test("a refusal loads nothing, and is remembered", async ({
   await expect(
     page.getByRole("button", { name: "Cookie settings" }),
   ).toBeFocused();
-  await page.reload();
-  await expect(page.getByRole("banner")).toBeVisible();
+  await gotoHydrated(page, "/");
   await expect(banner(page)).toBeHidden();
   expect(libraryRequests).toEqual([]);
 });
@@ -185,8 +184,7 @@ test("cookie settings changes the answer, by keyboard", async ({
     ),
   ).toBe(true);
   libraryRequests.length = 0;
-  await page.reload();
-  await expect(page.getByRole("banner")).toBeVisible();
+  await gotoHydrated(page, "/");
   expect(libraryRequests).toEqual([]);
 });
 
@@ -194,14 +192,14 @@ base.describe("without a measurement id", () => {
   base(
     "there is no banner, no cookie settings, and no Google in the CSP",
     async ({ page }) => {
-      const response = await page.goto("/");
-      await expect(page.getByRole("banner")).toBeVisible();
+      await gotoHydrated(page, "/");
+      const response = await page.request.get("/");
 
       await expect(banner(page)).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Cookie settings" }),
       ).toHaveCount(0);
-      expect(response!.headers()["content-security-policy"]).not.toContain(
+      expect(response.headers()["content-security-policy"]).not.toContain(
         "google",
       );
     },

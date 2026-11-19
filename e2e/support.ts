@@ -5,6 +5,7 @@ import {
   test as base,
   type APIRequestContext,
   type BrowserContext,
+  type ConsoleMessage,
   type Page,
 } from "@playwright/test";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -37,8 +38,14 @@ export const test = base.extend<{
     async ({ page, allowConsoleErrors, baseURL }, use) => {
       const errors: string[] = [];
       const fromApp = () => page.url().startsWith(baseURL!);
+      // An unknown address answers 404 on purpose (apps/bff/src/app.ts), and
+      // the browser reports the page's own status as an error: not the app's.
+      const pageNotFound = (message: ConsoleMessage) =>
+        message.text().startsWith("Failed to load resource") &&
+        message.text().includes("status of 404") &&
+        message.location().url === page.url();
       page.on("console", (message) => {
-        if (message.type() === "error" && fromApp())
+        if (message.type() === "error" && fromApp() && !pageNotFound(message))
           errors.push(message.text());
       });
       page.on("pageerror", (error) => {

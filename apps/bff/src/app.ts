@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type MiddlewareHandler } from "hono";
 import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
+import { routeMatcher } from "@booking/core";
 import { requestId, type RequestIdVariables } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { negotiateEncoding, precompress } from "./compression";
@@ -82,6 +83,21 @@ export function createApp() {
     }),
   );
 
+  // One address per page: the `www.` twin of PUBLIC_URL's host (or the bare
+  // domain, when PUBLIC_URL has `www.`) is sent there for good, so search
+  // engines don't index the site twice. Only that twin: a proxy that passes
+  // its own upstream name (app:3000) or an address must not loop.
+  const canonical = new URL(PUBLIC_URL);
+  const twin = canonical.hostname.startsWith("www.")
+    ? canonical.hostname.slice(4)
+    : `www.${canonical.hostname}`;
+  app.use(async (c, next) => {
+    const url = new URL(c.req.url);
+    const read = c.req.method === "GET" || c.req.method === "HEAD";
+    if (!read || url.hostname !== twin) return next();
+    return c.redirect(`${PUBLIC_URL}${url.pathname}${url.search}`, 301);
+  });
+
   // Refuses form posts from other sites. JSON from another origin is already
   // refused by the browser: there is no CORS, so its preflight fails. The
   // session cookie is also SameSite=Lax.
@@ -114,6 +130,13 @@ export function createApp() {
       .replaceAll("%PUBLIC_URL%", PUBLIC_URL)
       .replaceAll("%GA_MEASUREMENT_ID%", GA_MEASUREMENT_ID ?? "");
     const compressedIndex = precompress(index);
+    // The app's routes, from the build (routes.json): an address that matches
+    // none gets the app's not-found page with a 404 status, so search engines
+    // drop it. A build without the file answers 200 everywhere, as before.
+    const routesFile = join(STATIC_DIR, "routes.json");
+    const isAppRoute = existsSync(routesFile)
+      ? routeMatcher(JSON.parse(readFileSync(routesFile, "utf8")) as string[])
+      : () => true;
     // A file of the build, or its `.br` or `.gz` copy when the browser accepts
     // it (apps/web/vite.config.ts writes them). serveStatic matches bare
     // tokens only (`gzip`, not `gzip;q=0.8`), which is what browsers send; a
@@ -142,13 +165,15 @@ export function createApp() {
     app.get("/index.html", (c) => c.redirect("/", 301));
     app.get("/:file{[^/]+\\.[a-z0-9]+}", files());
     app.get("/:file{[^/]+\\.[a-z0-9]+}", (c) => c.text("Not found", 404));
-    // Every other path is a client route: the SPA decides what to show.
+    // Every other path is the SPA's page: a route's (200), or its not-found
+    // page (404) for an address that matches no route.
     app.get("*", (c) => {
       c.header("Cache-Control", "no-cache");
       c.header("Vary", "Accept-Encoding");
+      const status = isAppRoute(c.req.path) ? 200 : 404;
       const encoding = negotiateEncoding(c.req.header("Accept-Encoding"));
-      if (!encoding) return c.html(index);
-      return c.body(compressedIndex[encoding], 200, {
+      if (!encoding) return c.html(index, status);
+      return c.body(compressedIndex[encoding], status, {
         "Content-Type": "text/html; charset=UTF-8",
         "Content-Encoding": encoding,
       });

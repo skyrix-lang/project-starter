@@ -63,8 +63,9 @@ function ErrorPage({ error, reset }: ErrorComponentProps) {
   );
 }
 
-// The SPA can't make the server answer 404, so the page tells search engines
-// not to index it instead.
+// The server answers 404 for an address that matches no route (routes.json);
+// a route's own "not found", such as a missing record, still answers 200, so
+// the page also tells search engines not to index it.
 function NotFoundPage() {
   usePageMeta({ title: "Page not found", noindex: true });
   return (
