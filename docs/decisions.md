@@ -348,3 +348,14 @@ the usual duplicate without trusting the `Host` header beyond it.
 **Revisit when:** routes are prerendered (see "Client-only SPA"): the static
 pages then carry their own status. Or a route can tell from the URL alone
 that its record doesn't exist (a slug list known at build time).
+
+## A short README, with the guides in docs/
+
+`README.md` holds what the project is, a quick start and a table of the
+guides; each topic has its own page in `docs/` (architecture, development,
+configuration, customizing, SEO and analytics, security, deployment, beside
+new-project, auto-deploy and starter-sync). Scripts, workflows and
+`.env.example` point to the page and section. **Why:** one 500-line README was
+hard to read, and an agent that needed one section read all of it; a page per
+topic is read only when needed. **Revisit when:** a page grows past one topic:
+split it again rather than growing the README.

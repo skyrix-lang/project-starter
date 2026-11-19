@@ -11,7 +11,7 @@
 #
 # Run from the deployed commit (DEPLOY_DIR/src). It reads DATABASE_URL from
 # DEPLOY_DIR/.env.production, and R2's settings from DEPLOY_DIR/backup.env
-# (never committed; see "Backups" in the README). It writes the backup's path
+# (never committed; see "Backups" in docs/deployment.md). It writes the backup's path
 # to DEPLOY_DIR/backups/latest. scripts/deploy-remote.sh runs it before every
 # migration, and the Deploy workflow every night.
 set -eu
@@ -30,7 +30,7 @@ value() {
 url=$(value DATABASE_URL "$dir/.env.production")
 [ -n "$url" ] || { echo "No DATABASE_URL in $dir/.env.production." >&2; exit 1; }
 [ -f "$dir/backup.env" ] || {
-  echo "$dir/backup.env is missing: backups go to R2 (README, \"Backups\")." >&2
+  echo "$dir/backup.env is missing: backups go to R2 (docs/deployment.md, \"Backups\")." >&2
   exit 1
 }
 bucket=$(value R2_BUCKET "$dir/backup.env")

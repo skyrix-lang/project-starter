@@ -6,11 +6,11 @@ name: Deploy
 #     backup restores and uploads it to R2; only then does it migrate and
 #     start the new version, and check the public https address. If anything
 #     after the backup fails, it restores the database and starts the
-#     previous version (README, "Deploying" and "Backups").
+#     previous version (docs/deployment.md, "Deploying" and "Backups").
 #   - nothing new to deploy: back the database up all the same.
 # "Run workflow" in the Actions tab deploys main now, whatever the hour.
 # Does nothing until the DEPLOY_SSH variable is set.
-# Setup: README, "Deploying automatically" and "Backups".
+# Setup: docs/auto-deploy.md, and "Backups" in docs/deployment.md.
 
 on:
   schedule:
@@ -78,7 +78,7 @@ jobs:
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           if [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
-            echo "::error::Set the DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets in the production environment (README, \"Deploying automatically\")."
+            echo "::error::Set the DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets in the production environment (docs/auto-deploy.md)."
             exit 1
           fi
           install -d -m 700 ~/.ssh

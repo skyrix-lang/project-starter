@@ -116,7 +116,7 @@ jobs:
             This repository is a project made from project-starter. `yarn sync-from-starter`
             just merged the starter's latest changes into it (docs/starter-sync.md explains
             how). The changes are staged: `git diff --cached` shows them, against this
-            project's own code. Read AGENTS.md, README.md and docs/decisions.md first, so
+            project's own code. Read AGENTS.md, README.md and docs/decisions.md first (and the pages in docs/ the diff touches), so
             you know what this project is.
 
             1. Conflicts. These files have git conflict markers, between
@@ -136,7 +136,7 @@ jobs:
                its own), the demo bookings feature, wording that describes the
                starter. Change them to this project's (its names are `slug` and
                `title` in `.starter.json`; its domain and conventions are in its
-               README, .env.example, packages/core/src/site.ts and docs). Never
+               README, docs/, .env.example and packages/core/src/site.ts). Never
                change the project's own names, even where they contain a starter
                word. Also check the new code fits the
                project: an import of something the project removed, a setting the project

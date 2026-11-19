@@ -44,7 +44,8 @@ rules you check against.
    app. Ask: would these tests fail if the feature broke?
 7. **Fit.** It follows the bookings feature rather than inventing a new
    pattern, adds no dependency the rules say to ask about, and doesn't reverse a
-   recorded decision. README updated for new commands, variables or concepts.
+   recorded decision. The docs updated for new commands, variables or concepts
+   (`README.md` stays short; the topic's page in `docs/`).
 
 Run `yarn verify` and include the result. Don't run `yarn test` unless asked:
 it's slow, and the author runs it.

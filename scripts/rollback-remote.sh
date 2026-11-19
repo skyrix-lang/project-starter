@@ -37,7 +37,7 @@ else
   # The previous image starts even if the restore fails: better the old app
   # than none, and the failure says to look now.
   sh scripts/restore-remote.sh "$backup" ||
-    echo "THE DATABASE RESTORE FAILED: the previous version runs on the migrated database. Restore by hand (README, \"Backups\")." >&2
+    echo "THE DATABASE RESTORE FAILED: the previous version runs on the migrated database. Restore by hand (docs/deployment.md, \"Backups\")." >&2
 fi
 
 docker tag booking-platform-app:previous booking-platform-app:current

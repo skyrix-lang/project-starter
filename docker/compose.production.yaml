@@ -4,7 +4,7 @@
 # the server and runs this file there.
 #
 # Everything the app needs comes from .env.production, next to the repository
-# on the server and never committed: see "Deploying" in the README.
+# on the server and never committed: see "Deploying" in docs/deployment.md.
 name: booking-platform
 
 services:

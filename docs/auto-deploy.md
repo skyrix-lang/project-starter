@@ -137,8 +137,8 @@ first, from your machine.
     transaction** (dropping the `drizzle` and `public` schemas first), so a
     failed restore leaves the database as it was.
 
-- **You:** on the server, the one-time setup in the README's "Deploying"
-  section: Docker, the proxy, a database whose user **owns** it, and
+- **You:** on the server, the one-time setup in the "Deploying" section of
+  [deployment.md](deployment.md): Docker, the proxy, a database whose user **owns** it, and
   `.env.production` (the production values of `.env.example`, including its
   "Production" section):
 

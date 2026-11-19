@@ -45,6 +45,13 @@ yarn install
 yarn rename acme-portal "Acme Portal"
 ```
 
+`yarn rename` replaces the starter's name wherever it's an identifier: the
+`@booking/*` package scope, the root package and image, the local containers,
+database, Keycloak realm and client, and the site name. It leaves the bookings
+feature alone: keep it to copy from, and remove it when the project has its
+own. It also writes `.starter.json`: commit it, it's where
+`yarn sync-from-starter` starts from.
+
 Then give it its own history, starting from the renamed code:
 
 ```bash

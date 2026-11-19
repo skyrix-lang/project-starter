@@ -42,7 +42,7 @@ jobs:
             1. Bugs: wrong behaviour, missed cases, security problems (AGENTS.md's
                Security section), data leaks in logs.
             2. Broken rules from AGENTS.md: tests missing for new behaviour, env
-               variables not in env.ts / .env.example / README, dependencies changed by
+               variables not in env.ts / .env.example / docs/configuration.md, dependencies changed by
                hand, decisions reversed without being recorded.
             3. The starter and its projects. The starter's own names are the ones
                the rules in `scripts/rename.ts` replace: read them there. (This prompt
