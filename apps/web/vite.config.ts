@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, constants, gzip } from "node:zlib";
 import { defineConfig, loadEnv, type Plugin } from "vite";
+import { routePaths } from "../../packages/core/src/routes.ts";
 import { bffDevPort, devPort } from "../../scripts/checkout.ts";
 
 // In development, Vite serves the app and forwards the BFF's paths to it, so
@@ -27,6 +28,7 @@ export default defineConfig(({ mode }) => {
         PUBLIC_URL: publicUrl,
         GA_MEASUREMENT_ID: env.GA_MEASUREMENT_ID ?? "",
       }),
+      routesManifest(),
       precompress(),
     ],
     server: {
@@ -56,6 +58,30 @@ function devPlaceholders(values: Record<string, string>): Plugin {
         (page, [name, value]) => page.replaceAll(`%${name}%`, value),
         html,
       ),
+  };
+}
+
+/**
+ * Writes `routes.json`, the app's route paths, from the route tree TanStack
+ * Router generated: the BFF answers 404 for an address that matches none
+ * (apps/bff/src/app.ts).
+ */
+export function routesManifest(): Plugin {
+  let root = "";
+  return {
+    name: "routes-manifest",
+    apply: "build",
+    configResolved: (config) => {
+      root = config.root;
+    },
+    generateBundle: async function () {
+      const tree = await readFile(join(root, "src/routeTree.gen.ts"), "utf8");
+      this.emitFile({
+        type: "asset",
+        fileName: "routes.json",
+        source: `${JSON.stringify(routePaths(tree), null, 2)}\n`,
+      });
+    },
   };
 }
 
