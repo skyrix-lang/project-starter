@@ -184,8 +184,9 @@ scan has run. Then try the whole chain once:
 
 ## 9. Deploying automatically (optional)
 
-To have each merge into `main` deployed to a server once CI passes: the steps,
-SSH key and secrets included, are in [auto-deploy.md](auto-deploy.md).
+To have `main` deployed to a server every night once CI passed on it, with
+the database backed up to Cloudflare R2 first: the steps, SSH key, secrets
+and bucket included, are in [auto-deploy.md](auto-deploy.md).
 
 ## When something doesn't work
 
