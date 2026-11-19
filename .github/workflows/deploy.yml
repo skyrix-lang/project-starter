@@ -1,0 +1,129 @@
+name: Deploy
+
+# Every night at 02:00, Paris time:
+#   - main has a new commit whose CI passed: deploy it (`yarn deploy`,
+#     scripts/deploy.sh). The server backs up the database first, proves the
+#     backup restores and uploads it to R2; only then does it migrate and
+#     start the new version, and check the public https address. If anything
+#     after the backup fails, it restores the database and starts the
+#     previous version (README, "Deploying" and "Backups").
+#   - nothing new to deploy: back the database up all the same.
+# "Run workflow" in the Actions tab deploys main now, whatever the hour.
+# Does nothing until the DEPLOY_SSH variable is set.
+# Setup: README, "Deploying automatically" and "Backups".
+
+on:
+  schedule:
+    # GitHub's clock is UTC: 02:00 in Paris is 00:00 UTC in summer and 01:00
+    # in winter. Both run; the "when" job keeps the one that is 02:00 there.
+    - cron: "0 0 * * *"
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+# One at a time, in order: never cancelled in the middle of a migration.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read # to read main's CI result
+
+jobs:
+  when:
+    if: vars.DEPLOY_SSH != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      go: ${{ steps.when.outputs.go }}
+    steps:
+      - id: when
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          if [ -z "$SCHEDULE" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Which UTC hour is 02:00 in Paris today; the cron that fired says
+          # which run this is, even if GitHub started it late.
+          case "$(TZ=Europe/Paris date +%z)" in
+            +0200) wanted="0 0 * * *" ;;
+            *) wanted="0 1 * * *" ;;
+          esac
+          if [ "$SCHEDULE" = "$wanted" ]; then echo "go=true" >> "$GITHUB_OUTPUT"
+          else echo "Not 02:00 in Paris on this run: the other one deploys."; fi
+
+  deploy:
+    needs: when
+    if: needs.when.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Settings → Environments → production: where the secrets live, and where
+    # you can require an approval or limit deploys to main.
+    environment: production
+    env:
+      DEPLOY_SSH: ${{ vars.DEPLOY_SSH }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_DIR: ${{ vars.DEPLOY_DIR || 'apps/booking-platform' }}
+      # The address to check after a deploy; empty means the server's PUBLIC_URL.
+      DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      # A key for this purpose only, and the server's host key pinned: no
+      # trust-on-first-use, so a spoofed server gets nothing.
+      - name: SSH key and known host
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::error::Set the DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets in the production environment (README, \"Deploying automatically\")."
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          echo "DEPLOY_SSH_OPTIONS=-i $HOME/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes" >> "$GITHUB_ENV"
+
+      # Deploy main if it's new on the server and its CI passed; at night,
+      # otherwise, only back up. By hand, always deploy.
+      - id: what
+        name: Deploy or back up?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          head=$(git rev-parse HEAD)
+          # shellcheck disable=SC2086
+          deployed=$(ssh -p "$DEPLOY_PORT" $DEPLOY_SSH_OPTIONS "$DEPLOY_SSH" "cat '$DEPLOY_DIR/deployed' 2>/dev/null" || true)
+          ci=$(gh run list --workflow CI --branch main --commit "$head" --event push \
+            --json conclusion --jq '.[0].conclusion // "none"')
+          if [ "$MANUAL" = true ]; then
+            echo "Run by hand: deploying ${head:0:7}."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "$deployed" = "$head" ]; then
+            echo "The server already runs ${head:0:7}: backing up only."
+          elif [ "$ci" != success ]; then
+            echo "::warning::main (${head:0:7}) has no successful CI run ($ci): not deploying tonight, backing up only."
+          else
+            echo "Deploying ${head:0:7} (the server runs ${deployed:0:7})."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: yarn deploy
+        if: steps.what.outputs.deploy == 'true'
+        # Needs git, ssh, tar and curl, not Node or Yarn.
+        run: sh scripts/deploy.sh
+
+      - name: Back up the database
+        if: steps.what.outputs.deploy != 'true'
+        run: |
+          # shellcheck disable=SC2086
+          ssh -p "$DEPLOY_PORT" $DEPLOY_SSH_OPTIONS "$DEPLOY_SSH" \
+            "cd '$DEPLOY_DIR/src' && sh scripts/backup-remote.sh"
+
+      - name: Clean up the key
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

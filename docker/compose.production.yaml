@@ -1,0 +1,48 @@
+# The app in production, behind an nginx-proxy that routes by VIRTUAL_HOST and
+# gets its certificates from Let's Encrypt (the usual jwilder/nginx-proxy +
+# companion setup). `yarn deploy` (scripts/deploy.sh) copies the repository to
+# the server and runs this file there.
+#
+# Everything the app needs comes from .env.production, next to the repository
+# on the server and never committed: see "Deploying" in the README.
+name: booking-platform
+
+services:
+  # Applies the migrations and exits: a deploy step, run before the new
+  # version starts. Not started by `up` (it has a profile).
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: migrate
+    env_file:
+      - ../.env.production
+    environment:
+      # Only the app is a web host: the proxy must not route to this one.
+      VIRTUAL_HOST: ""
+      LETSENCRYPT_HOST: ""
+    networks:
+      - nginx-proxy
+    profiles:
+      - deploy
+
+  app:
+    # A fixed name: each deploy keeps the version it replaces as
+    # booking-platform-app:previous, which scripts/rollback-remote.sh starts again.
+    image: booking-platform-app:current
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runner
+    env_file:
+      - ../.env.production
+    expose:
+      - "3000"
+    networks:
+      - nginx-proxy
+    restart: unless-stopped
+
+networks:
+  # The proxy's network, which also reaches the shared Postgres.
+  nginx-proxy:
+    external: true
