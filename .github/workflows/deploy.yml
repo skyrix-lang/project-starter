@@ -32,7 +32,7 @@ permissions:
 jobs:
   when:
     if: vars.DEPLOY_SSH != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 2
     outputs:
       go: ${{ steps.when.outputs.go }}
@@ -54,6 +54,9 @@ jobs:
   deploy:
     needs: when
     if: needs.when.outputs.go == 'true'
+    # Always GitHub's runner, even with the RUNNER variable: this job writes
+    # the deploy key and known_hosts into the runner's home, which every job
+    # on your own runner shares.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Settings → Environments → production: where the secrets live, and where

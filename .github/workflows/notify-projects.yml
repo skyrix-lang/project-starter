@@ -5,7 +5,8 @@ name: Notify projects
 # merges itself once the project's CI passes.
 # Projects are listed in the STARTER_PROJECTS repository variable, separated by
 # spaces ("owner/repo owner/other"). In a project the variable isn't set, so it
-# does nothing. Setup: docs/starter-sync.md, "Automatic sync".
+# does nothing. Setup, and the second token for projects owned by Fexoda:
+# docs/starter-sync.md, "Automatic sync".
 
 on:
   push:
@@ -17,25 +18,38 @@ permissions: {}
 jobs:
   notify:
     if: vars.STARTER_PROJECTS != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - env:
           # STARTER_SYNC_TOKEN's Contents permission on the projects is enough
-          # to send them a repository_dispatch event.
-          GH_TOKEN: ${{ secrets.STARTER_SYNC_TOKEN }}
+          # to send them a repository_dispatch event. A fine-grained token
+          # covers one owner's repositories: projects owned by Fexoda use
+          # STARTER_SYNC_TOKEN_FEXODA when it's set.
+          TOKEN: ${{ secrets.STARTER_SYNC_TOKEN }}
+          TOKEN_FEXODA: ${{ secrets.STARTER_SYNC_TOKEN_FEXODA }}
           PROJECTS: ${{ vars.STARTER_PROJECTS }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::Add the STARTER_SYNC_TOKEN secret to the starter, with Contents read and write on the projects."
+          if [ -z "$TOKEN" ] && [ -z "$TOKEN_FEXODA" ]; then
+            echo "::error::Add the STARTER_SYNC_TOKEN secret to the starter, with Contents read and write on the projects (and STARTER_SYNC_TOKEN_FEXODA for those owned by Fexoda)."
             exit 1
           fi
           failed=0
           for repo in $PROJECTS; do
-            if gh api "repos/$repo/dispatches" -f event_type=starter-updated --silent; then
+            # Owners are case-insensitive on GitHub.
+            owner=$(printf '%s' "${repo%%/*}" | tr '[:upper:]' '[:lower:]')
+            if [ "$owner" = fexoda ] && { [ -n "$TOKEN_FEXODA" ] || [ -z "$TOKEN" ]; }; then
+              secret=STARTER_SYNC_TOKEN_FEXODA token=$TOKEN_FEXODA
+            else
+              secret=STARTER_SYNC_TOKEN token=$TOKEN
+            fi
+            if [ -z "$token" ]; then
+              echo "::error::No token for $repo: add the $secret secret to the starter."
+              failed=1
+            elif GH_TOKEN=$token gh api "repos/$repo/dispatches" -f event_type=starter-updated --silent; then
               echo "Asked $repo to sync."
             else
-              echo "::error::Couldn't reach $repo: is it covered by STARTER_SYNC_TOKEN?"
+              echo "::error::Couldn't reach $repo: is it covered by $secret?"
               failed=1
             fi
           done

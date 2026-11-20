@@ -52,3 +52,20 @@ origin, as in production.
   Every test also fails on a browser console error, or on an axe accessibility
   violation (WCAG 2.2 AA) on the page it ends on. Most tests sign in by writing
   a session row; `e2e/auth.spec.ts` drives the real Keycloak login.
+
+## CI
+
+`.github/workflows/ci.yml` runs `yarn verify` and `yarn test` on every pull
+request and on `main`, then builds the image on `main` and on tags. The
+workflows run on GitHub's runners (`ubuntu-latest`), unless the repository
+variable `RUNNER` names a label of your own self-hosted runners (Settings →
+Secrets and variables → Actions → Variables, for example `RUNNER=fexoda-vps`).
+Every job then runs there, except the nightly deploy (`deploy.yml`), which
+stays on GitHub's runners: it writes its SSH key into the runner's home, which
+every job on a self-hosted runner shares.
+
+What such a runner needs: Docker (rootless is fine) with the compose and
+buildx plugins, and Chromium's system libraries, installed once by an admin,
+since the e2e job installs the browser without them (that needs sudo) when
+it's not on GitHub's runners. The e2e jobs of a repository run one at a time
+there, as they share that Docker's Postgres and Keycloak containers.

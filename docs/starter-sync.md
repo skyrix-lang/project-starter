@@ -208,6 +208,13 @@ And once, in the starter:
   (`owner/acme-portal owner/other`). Add each new project.
 - **Secret `STARTER_SYNC_TOKEN`**: the same token, covering those projects.
   Its _Contents_ permission is what lets the starter send them the event.
+- **Secret `STARTER_SYNC_TOKEN_FEXODA`** (only with projects owned by
+  `Fexoda`): a fine-grained token has a single resource owner, so projects
+  owned by `Fexoda` need a second one, with the same permissions, made with
+  `Fexoda` as resource owner. The starter uses it for every `Fexoda/…` project
+  in `STARTER_PROJECTS`, and `STARTER_SYNC_TOKEN` for the others. Without it,
+  `STARTER_SYNC_TOKEN` is tried for them too. In such a project, its own
+  `STARTER_SYNC_TOKEN` secret is the `Fexoda` token.
 - `scripts/setup-github.sh` for the starter too, so your own pull requests
   into it merge themselves: `gh pr merge --auto --merge` on a pull request
   (or ask Claude to turn it on).
