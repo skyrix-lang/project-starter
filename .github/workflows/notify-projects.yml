@@ -5,7 +5,8 @@ name: Notify projects
 # merges itself once the project's CI passes.
 # Projects are listed in the STARTER_PROJECTS repository variable, separated by
 # spaces ("owner/repo owner/other"). In a project the variable isn't set, so it
-# does nothing. Setup: docs/starter-sync.md, "Automatic sync".
+# does nothing. Setup, and a second token for projects of another owner:
+# docs/starter-sync.md, "Automatic sync".
 
 on:
   push:
@@ -17,25 +18,46 @@ permissions: {}
 jobs:
   notify:
     if: vars.STARTER_PROJECTS != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - env:
           # STARTER_SYNC_TOKEN's Contents permission on the projects is enough
-          # to send them a repository_dispatch event.
-          GH_TOKEN: ${{ secrets.STARTER_SYNC_TOKEN }}
+          # to send them a repository_dispatch event. A fine-grained token
+          # covers one owner's repositories: projects of a second owner use
+          # STARTER_SYNC_TOKEN_2, for the owner named in the
+          # STARTER_SYNC_TOKEN_2_OWNER variable.
+          TOKEN: ${{ secrets.STARTER_SYNC_TOKEN }}
+          TOKEN_2: ${{ secrets.STARTER_SYNC_TOKEN_2 }}
+          OWNER_2: ${{ vars.STARTER_SYNC_TOKEN_2_OWNER }}
           PROJECTS: ${{ vars.STARTER_PROJECTS }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
+          if [ -z "$TOKEN" ] && [ -z "$TOKEN_2" ]; then
             echo "::error::Add the STARTER_SYNC_TOKEN secret to the starter, with Contents read and write on the projects."
             exit 1
           fi
+          if [ -n "$TOKEN_2" ] && [ -z "$OWNER_2" ]; then
+            echo "::error::STARTER_SYNC_TOKEN_2 is set: set the STARTER_SYNC_TOKEN_2_OWNER variable to the owner it covers."
+            exit 1
+          fi
+          # Owners are case-insensitive on GitHub.
+          lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+          owner_2=$(lower "$OWNER_2")
           failed=0
           for repo in $PROJECTS; do
-            if gh api "repos/$repo/dispatches" -f event_type=starter-updated --silent; then
+            if [ -n "$owner_2" ] && [ "$(lower "${repo%%/*}")" = "$owner_2" ] &&
+              { [ -n "$TOKEN_2" ] || [ -z "$TOKEN" ]; }; then
+              secret=STARTER_SYNC_TOKEN_2 token=$TOKEN_2
+            else
+              secret=STARTER_SYNC_TOKEN token=$TOKEN
+            fi
+            if [ -z "$token" ]; then
+              echo "::error::No token for $repo: add the $secret secret to the starter."
+              failed=1
+            elif GH_TOKEN=$token gh api "repos/$repo/dispatches" -f event_type=starter-updated --silent; then
               echo "Asked $repo to sync."
             else
-              echo "::error::Couldn't reach $repo: is it covered by STARTER_SYNC_TOKEN?"
+              echo "::error::Couldn't reach $repo: is it covered by $secret?"
               failed=1
             fi
           done
