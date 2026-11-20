@@ -64,7 +64,10 @@ git commit -m "Initial commit: acme-portal, from project-starter"
 Then, as `yarn rename` says at the end: `rm -f .env && yarn setup`,
 `yarn verify && yarn test`. Still yours to write: the description in
 `package.json`, and the site's description, logo and metadata in
-`apps/web/index.html` and `packages/core/src/site.ts`.
+`apps/web/index.html` and `packages/core/src/site.ts`. The look: run the
+`design` skill, which takes the brand from a brief and references to its own
+theme and `docs/design.md` (until then, that file describes the starter's
+default brand).
 
 ## 2. Create the repository and push (Claude, after you say yes)
 

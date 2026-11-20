@@ -37,6 +37,11 @@ export const CONFIG_FILE = ".starter.json";
  * and this project's own record belong to one repository each. */
 export const ALWAYS_IGNORED = ["yarn.lock", "default.json", CONFIG_FILE];
 
+/** The project's own once it has them: added when missing, never changed.
+ * The starter's copy is a starting point (its design.md describes the
+ * default brand; the `design` skill rewrites it). */
+export const SEED_ONLY = new Set(["docs/design.md"]);
+
 /** The sync tooling and its guide: always the starter's, copied as they are
  * (they hold the starter's names on purpose; the sync script needs rename.ts). */
 export const VERBATIM = new Set([
@@ -98,8 +103,15 @@ export function decide(change: {
   workspaceExists: boolean;
   /** The starter's own tooling: its version wins. */
   owned?: boolean;
+  /** Added when missing, never changed (SEED_ONLY). */
+  seedOnly?: boolean;
 }): Action {
-  const { status, base, theirs, ours, workspaceExists, owned } = change;
+  const { status, base, theirs, ours, workspaceExists, owned, seedOnly } =
+    change;
+  if (seedOnly) {
+    if (ours) return { kind: "none", reason: "this project's own" };
+    if (status === "D") return { kind: "none", reason: "already gone" };
+  }
   if (status === "D") {
     if (!ours) return { kind: "none", reason: "already gone" };
     if (base && ours.equals(base)) return { kind: "delete" };
@@ -112,6 +124,7 @@ export function decide(change: {
   if (ours?.equals(theirs)) return { kind: "none", reason: "already the same" };
   if (owned) return { kind: "write", content: theirs };
   if (!ours) {
+    if (seedOnly) return { kind: "write", content: theirs };
     if (!workspaceExists) {
       return { kind: "skip", reason: "in a workspace this project removed" };
     }
@@ -331,6 +344,7 @@ function main() {
         ours,
         workspaceExists: !workspace || existsSync(workspace),
         owned: VERBATIM.has(path),
+        seedOnly: SEED_ONLY.has(path),
       });
 
       if (action.kind === "none") continue;

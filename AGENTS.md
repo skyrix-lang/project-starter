@@ -33,8 +33,8 @@ import which.
    that touches existing data, or one with open product questions gets a spec in
    `docs/specs/` (template there). Wait for answers to its open questions.
 3. **Build in small steps** with the workflow that fits, from
-   `.claude/skills/<name>/SKILL.md` (plain Markdown, for any agent): `new-feature`,
-   `new-page`, `seo-check`, `run-app`. Run `yarn verify` after each step.
+   `.claude/skills/<name>/SKILL.md` (plain Markdown, for any agent): `design`,
+   `new-feature`, `new-page`, `seo-check`, `run-app`. Run `yarn verify` after each step.
 4. **See it work.** Tests prove it; also check the running app (`run-app`): sign
    in with `yarn dev:session`, load the page, read the console and server output.
 5. **Done means:** `yarn verify` and `yarn test` pass; new behaviour has tests
@@ -100,11 +100,35 @@ databases.
 - Forms: React Hook Form + `zodResolver` with the schema from `@booking/core`,
   and the `Field` components from `@booking/ui`.
 - Style with theme tokens only, which also makes dark mode work (the theme's
-  `.dark` block, `apps/web/src/theme.ts`). A link styled as a button uses
-  `buttonVariants()`: never put a `<button>` inside a link.
+  `.dark` block, `apps/web/src/theme.ts`); sizes and spacing too ("Typography
+  and layout" below). A link styled as a button uses `buttonVariants()`: never
+  put a `<button>` inside a link.
 - Accessibility is a requirement (WCAG 2.2 AA, European Accessibility Act):
   labelled controls, one `h1`, no skipped heading levels, visible focus. Every
   e2e test runs axe on the page it ends on.
+
+## Typography and layout
+
+Type and layout come from the theme like colours do (tokens listed in
+`packages/theme-default/AGENTS.md`, utilities in `packages/ui/src/styles.css`),
+so a new page looks like the others without choosing its own sizes. What this
+brand does with them (its sections, type, imagery, do's and don'ts) is in
+`docs/design.md`: read it before building or changing a page. A new look, or
+a page to design first, goes through the `design` skill.
+
+- Headings use `text-display`, `text-h1`, `text-h2` or `text-h3`, never a raw
+  size: `yarn verify` fails on `text-2xl` or larger on an h1 to h3
+  (`scripts/heading-sizes.test.ts`).
+  Pick by size, not by tag: the level follows the outline (one `h1`, no skipped
+  levels), so an app screen's `h1` is usually `text-h2` and a card's `h2`
+  `text-h3`. The paragraph under a title is `text-lead`.
+- At most one `text-display` per page, and only on a public page (its hero).
+- A page is `page-section` > `page-container`: the section gives the vertical
+  space (and can carry a full-width background), the container the width and
+  side padding. The root layout adds neither, and `yarn verify` fails on a
+  route or `*-page.tsx` without `page-section` (`scripts/page-layout.test.ts`).
+  Sections in a row: `pt-0` on the next one, so the space isn't doubled.
+- Long text (an article, an intro paragraph) is `prose-width`.
 
 ## Rendering and SEO
 

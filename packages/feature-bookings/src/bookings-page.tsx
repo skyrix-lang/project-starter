@@ -19,47 +19,49 @@ export function BookingsPage({ status }: { status?: BookingStatus }) {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("text")}</p>
+    <section className="page-section">
+      <div className="page-container space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-h2">{t("title")}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t("text")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterBar active={status ?? "all"} />
+            {!creating && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setCreating(true)}
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t("new")}
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterBar active={status ?? "all"} />
-          {!creating && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setCreating(true)}
-            >
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              {t("new")}
-            </Button>
-          )}
-        </div>
+
+        {creating && <CreateBookingForm onDone={() => setCreating(false)} />}
+
+        {bookings.isPending ? (
+          <BookingsSkeleton />
+        ) : bookings.data?.length === 0 ? (
+          <Card className="text-center py-12">
+            <CalendarDays
+              aria-hidden="true"
+              className="h-12 w-12 text-muted-foreground mx-auto"
+            />
+            <p className="mt-4 text-muted-foreground">{t("empty")}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bookings.data?.map((booking) => (
+              <BookingCard key={booking.id} booking={booking} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {creating && <CreateBookingForm onDone={() => setCreating(false)} />}
-
-      {bookings.isPending ? (
-        <BookingsSkeleton />
-      ) : bookings.data?.length === 0 ? (
-        <Card className="text-center py-12">
-          <CalendarDays
-            aria-hidden="true"
-            className="h-12 w-12 text-muted-foreground mx-auto"
-          />
-          <p className="mt-4 text-muted-foreground">{t("empty")}</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {bookings.data?.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
-          ))}
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 

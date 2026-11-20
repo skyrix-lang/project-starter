@@ -44,30 +44,34 @@ function SignInPage() {
   })}`;
 
   return (
-    <div className="max-w-sm mx-auto py-8">
-      <Card className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">{t("signIn.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("signIn.text")}
-          </p>
-        </div>
-        {error && (
-          <p
-            role="alert"
-            className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive-soft-foreground"
-          >
-            {t(
-              isErrorCode(error)
-                ? `signIn.errors.${error}`
-                : "signIn.errors.default",
+    <section className="page-section">
+      <div className="page-container">
+        <div className="max-w-sm mx-auto">
+          <Card className="space-y-6">
+            <div className="text-center">
+              <h1 className="text-h2">{t("signIn.title")}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("signIn.text")}
+              </p>
+            </div>
+            {error && (
+              <p
+                role="alert"
+                className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive-soft-foreground"
+              >
+                {t(
+                  isErrorCode(error)
+                    ? `signIn.errors.${error}`
+                    : "signIn.errors.default",
+                )}
+              </p>
             )}
-          </p>
-        )}
-        <a href={loginUrl} className={`w-full ${buttonVariants()}`}>
-          {t("signIn.continue")}
-        </a>
-      </Card>
-    </div>
+            <a href={loginUrl} className={`w-full ${buttonVariants()}`}>
+              {t("signIn.continue")}
+            </a>
+          </Card>
+        </div>
+      </div>
+    </section>
   );
 }
