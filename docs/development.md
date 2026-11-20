@@ -59,7 +59,7 @@ origin, as in production.
 request and on `main`, then builds the image on `main` and on tags. The
 workflows run on GitHub's runners (`ubuntu-latest`), unless the repository
 variable `RUNNER` names a label of your own self-hosted runners (Settings →
-Secrets and variables → Actions → Variables, for example `RUNNER=fexoda-vps`).
+Secrets and variables → Actions → Variables, for example `RUNNER=my-runners`).
 Every job then runs there, except the nightly deploy (`deploy.yml`), which
 stays on GitHub's runners: it writes its SSH key into the runner's home, which
 every job on a self-hosted runner shares.

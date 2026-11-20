@@ -5,7 +5,7 @@ name: Notify projects
 # merges itself once the project's CI passes.
 # Projects are listed in the STARTER_PROJECTS repository variable, separated by
 # spaces ("owner/repo owner/other"). In a project the variable isn't set, so it
-# does nothing. Setup, and the second token for projects owned by Fexoda:
+# does nothing. Setup, and a second token for projects of another owner:
 # docs/starter-sync.md, "Automatic sync".
 
 on:
@@ -24,22 +24,30 @@ jobs:
       - env:
           # STARTER_SYNC_TOKEN's Contents permission on the projects is enough
           # to send them a repository_dispatch event. A fine-grained token
-          # covers one owner's repositories: projects owned by Fexoda use
-          # STARTER_SYNC_TOKEN_FEXODA when it's set.
+          # covers one owner's repositories: projects of a second owner use
+          # STARTER_SYNC_TOKEN_2, for the owner named in the
+          # STARTER_SYNC_TOKEN_2_OWNER variable.
           TOKEN: ${{ secrets.STARTER_SYNC_TOKEN }}
-          TOKEN_FEXODA: ${{ secrets.STARTER_SYNC_TOKEN_FEXODA }}
+          TOKEN_2: ${{ secrets.STARTER_SYNC_TOKEN_2 }}
+          OWNER_2: ${{ vars.STARTER_SYNC_TOKEN_2_OWNER }}
           PROJECTS: ${{ vars.STARTER_PROJECTS }}
         run: |
-          if [ -z "$TOKEN" ] && [ -z "$TOKEN_FEXODA" ]; then
-            echo "::error::Add the STARTER_SYNC_TOKEN secret to the starter, with Contents read and write on the projects (and STARTER_SYNC_TOKEN_FEXODA for those owned by Fexoda)."
+          if [ -z "$TOKEN" ] && [ -z "$TOKEN_2" ]; then
+            echo "::error::Add the STARTER_SYNC_TOKEN secret to the starter, with Contents read and write on the projects."
             exit 1
           fi
+          if [ -n "$TOKEN_2" ] && [ -z "$OWNER_2" ]; then
+            echo "::error::STARTER_SYNC_TOKEN_2 is set: set the STARTER_SYNC_TOKEN_2_OWNER variable to the owner it covers."
+            exit 1
+          fi
+          # Owners are case-insensitive on GitHub.
+          lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+          owner_2=$(lower "$OWNER_2")
           failed=0
           for repo in $PROJECTS; do
-            # Owners are case-insensitive on GitHub.
-            owner=$(printf '%s' "${repo%%/*}" | tr '[:upper:]' '[:lower:]')
-            if [ "$owner" = fexoda ] && { [ -n "$TOKEN_FEXODA" ] || [ -z "$TOKEN" ]; }; then
-              secret=STARTER_SYNC_TOKEN_FEXODA token=$TOKEN_FEXODA
+            if [ -n "$owner_2" ] && [ "$(lower "${repo%%/*}")" = "$owner_2" ] &&
+              { [ -n "$TOKEN_2" ] || [ -z "$TOKEN" ]; }; then
+              secret=STARTER_SYNC_TOKEN_2 token=$TOKEN_2
             else
               secret=STARTER_SYNC_TOKEN token=$TOKEN
             fi
