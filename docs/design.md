@@ -6,8 +6,8 @@ keep it in step with the theme and the pages. Rules, not history.
 
 This is the starter's neutral default brand (`packages/theme-default`). A
 project rewrites this file for its own brand with the `design` skill,
-keeping the headings; `yarn sync-from-starter` adds it when missing and never
-changes it after. While it still describes the default brand, run the skill
+keeping the headings; `yarn sync-from-starter` adds it once and never changes it
+after. While it still describes the default brand, run the skill
 before designing pages.
 
 ## Brief

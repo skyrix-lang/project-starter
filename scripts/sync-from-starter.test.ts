@@ -56,19 +56,18 @@ describe("decide", () => {
     ).toBe("none");
   });
 
-  it("adds a seed-only file when missing, and never changes it after", () => {
+  it("adds a seed-only file when the starter adds it, and never after", () => {
     const seed = { workspaceExists: true, seedOnly: true } as const;
-    expect(decide({ status: "M", base, theirs, ...seed })).toEqual({
-      kind: "write",
-      content: theirs,
-    });
     expect(decide({ status: "A", theirs, ...seed })).toEqual({
       kind: "write",
       content: theirs,
     });
+    // The project's own copy is never changed.
     expect(
       decide({ status: "M", base, theirs, ours: base, ...seed }).kind,
     ).toBe("none");
+    // The project had it at the last sync and deleted it: it stays deleted.
+    expect(decide({ status: "M", base, theirs, ...seed }).kind).toBe("none");
     expect(decide({ status: "D", base, ours, ...seed }).kind).toBe("none");
   });
 

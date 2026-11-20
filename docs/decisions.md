@@ -391,10 +391,10 @@ type, section patterns, do's and don'ts, pages), and agents read it before
 building a page. The `design` skill writes it with the person: brief and
 references, two or three directions as throwaway pages on the theme's token
 names, then the theme, global layout and pages. `yarn sync-from-starter` adds
-the starter's copy (the default brand) when a project has none and never
-changes it after (`SEED_ONLY`). **Why:** tokens give one vocabulary, but
-not the choices made with it; without a record each page re-derives the brand
-from CSS. Mockups are agreed before code, but the result lives in the theme
+the starter's copy (the default brand) once, on the sync that brings it, and
+never changes or restores it after (`SEED_ONLY`). **Why:** tokens give one
+vocabulary, but not the choices made with it; without a record each page
+re-derives the brand from CSS. Mockups are agreed before code, but the result lives in the theme
 and the real pages, not in mockup files. **Revisit when:** projects keep
 design records elsewhere (a design tool), or several brands share one
 repository.

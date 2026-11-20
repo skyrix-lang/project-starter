@@ -65,8 +65,8 @@ Rewrite it for this brand, keeping its headings: the brief, the direction and
 what was taken from each reference, the token values and why, how type and
 sections are used, imagery and icons, do's and don'ts, and the pages with
 their sections. Agents read it before building any page, so write rules, not
-history. `yarn sync-from-starter` adds the starter's when a project has none,
-and never changes the project's after.
+history. `yarn sync-from-starter` brings the starter's once, and never
+changes the project's after.
 
 ## 5. Global layout
 

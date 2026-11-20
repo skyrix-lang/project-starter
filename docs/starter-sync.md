@@ -101,8 +101,9 @@ starter's file now, and the project's file. Then:
 | Matches a glob in `ignore`                             | skipped                                                   |
 
 `docs/design.md` is the project's own design (the `design` skill writes it):
-a project without one gets the starter's, describing the default brand, as a
-starting point, and after that it's never changed. It never touches
+a project gets the starter's, describing the default brand, as a starting
+point on the sync that brings it, and after that it's never changed (nor
+restored if the project deletes it). It never touches
 `yarn.lock`: when a `package.json` changed, it runs
 `yarn install`, which rewrites it. The sync tooling itself
 (`scripts/sync-from-starter.ts`, `scripts/rename.ts`, their tests and this

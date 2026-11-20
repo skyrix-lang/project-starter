@@ -37,7 +37,8 @@ export const CONFIG_FILE = ".starter.json";
  * and this project's own record belong to one repository each. */
 export const ALWAYS_IGNORED = ["yarn.lock", "default.json", CONFIG_FILE];
 
-/** The project's own once it has them: added when missing, never changed.
+/** The project's own once it has them: added when the starter adds them,
+ * never changed or restored after.
  * The starter's copy is a starting point (its design.md describes the
  * default brand; the `design` skill rewrites it). */
 export const SEED_ONLY = new Set(["docs/design.md"]);
@@ -110,7 +111,9 @@ export function decide(change: {
     change;
   if (seedOnly) {
     if (ours) return { kind: "none", reason: "this project's own" };
-    if (status === "D") return { kind: "none", reason: "already gone" };
+    // Seeded when the starter adds it. Changed or deleted in the starter
+    // while missing here: the project had it and removed it, so it stays gone.
+    if (status !== "A") return { kind: "none", reason: "removed here" };
   }
   if (status === "D") {
     if (!ours) return { kind: "none", reason: "already gone" };
@@ -124,7 +127,6 @@ export function decide(change: {
   if (ours?.equals(theirs)) return { kind: "none", reason: "already the same" };
   if (owned) return { kind: "write", content: theirs };
   if (!ours) {
-    if (seedOnly) return { kind: "write", content: theirs };
     if (!workspaceExists) {
       return { kind: "skip", reason: "in a workspace this project removed" };
     }
