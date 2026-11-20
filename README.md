@@ -40,6 +40,7 @@ tests); `yarn test` runs the end-to-end tests. Every command:
 | [Development](docs/development.md)                          | running it locally, every command, the tests                              |
 | [Configuration](docs/configuration.md)                      | the server's variables, sign-in (OpenID Connect), mail                    |
 | [Customizing for a customer](docs/customizing.md)           | brand and dark mode, languages, icons, pages, features                    |
+| [Design](docs/design.md)                                    | this site's look: tokens, type, sections, do's and don'ts                 |
 | [SEO, analytics and compression](docs/seo-and-analytics.md) | metadata, sitemap, 404s, link previews, Google Analytics, gzip and brotli |
 | [Security](docs/security.md)                                | sessions, headers and CSP, CSRF, rate limits, supply chain                |
 | [Deployment](docs/deployment.md)                            | the Docker image, deploying, rollback, backups, logs                      |

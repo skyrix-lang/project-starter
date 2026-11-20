@@ -53,9 +53,7 @@ export function CreateBookingForm({ onDone }: { onDone: () => void }) {
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-4 sm:grid-cols-2"
       >
-        <h2 className="text-lg font-semibold sm:col-span-2">
-          {t("form.heading")}
-        </h2>
+        <h2 className="text-h3 sm:col-span-2">{t("form.heading")}</h2>
         <Field invalid={!!errors.title} className="sm:col-span-2">
           <FieldLabel>{t("form.title")}</FieldLabel>
           <Input {...register("title")} />

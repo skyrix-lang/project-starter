@@ -29,10 +29,9 @@ function RootLayout() {
     <Toaster label={t("toast.region")} closeLabel={t("toast.close")}>
       <div className="min-h-screen flex flex-col">
         <Header />
+        {/* Each page lays itself out: page-section > page-container. */}
         <main className="flex-1">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
         <Footer />
         <ConsentBanner />
@@ -51,20 +50,22 @@ function ErrorPage({ error, reset }: ErrorComponentProps) {
   }, [error]);
 
   return (
-    <div className="text-center py-20">
-      <h1 className="text-2xl font-bold">{t("error.title")}</h1>
-      <p className="mt-2 text-muted-foreground">{t("error.text")}</p>
-      <Button
-        className="mt-6"
-        onClick={() => {
-          queryErrors.reset();
-          reset();
-          void router.invalidate();
-        }}
-      >
-        {t("error.retry")}
-      </Button>
-    </div>
+    <section className="page-section text-center">
+      <div className="page-container">
+        <h1 className="text-h2">{t("error.title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("error.text")}</p>
+        <Button
+          className="mt-6"
+          onClick={() => {
+            queryErrors.reset();
+            reset();
+            void router.invalidate();
+          }}
+        >
+          {t("error.retry")}
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -75,12 +76,14 @@ function NotFoundPage() {
   const { t } = useTranslation();
   usePageMeta({ title: t("notFound.title"), noindex: true });
   return (
-    <div className="text-center py-20">
-      <h1 className="text-2xl font-bold">{t("notFound.title")}</h1>
-      <p className="mt-2 text-muted-foreground">{t("notFound.text")}</p>
-      <Link to="/" className={`mt-6 ${buttonVariants()}`}>
-        {t("notFound.home")}
-      </Link>
-    </div>
+    <section className="page-section text-center">
+      <div className="page-container">
+        <h1 className="text-h2">{t("notFound.title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("notFound.text")}</p>
+        <Link to="/" className={`mt-6 ${buttonVariants()}`}>
+          {t("notFound.home")}
+        </Link>
+      </div>
+    </section>
   );
 }

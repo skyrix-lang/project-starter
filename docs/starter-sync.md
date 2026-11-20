@@ -100,7 +100,11 @@ starter's file now, and the project's file. Then:
 | Deleted in the starter, changed in the project         | kept, and listed                                          |
 | Matches a glob in `ignore`                             | skipped                                                   |
 
-It never touches `yarn.lock`: when a `package.json` changed, it runs
+`docs/design.md` is the project's own design (the `design` skill writes it):
+a project gets the starter's, describing the default brand, as a starting
+point on the sync that brings it, and after that it's never changed (nor
+restored if the project deletes it). It never touches
+`yarn.lock`: when a `package.json` changed, it runs
 `yarn install`, which rewrites it. The sync tooling itself
 (`scripts/sync-from-starter.ts`, `scripts/rename.ts`, their tests and this
 guide) is always the starter's version, with the starter's names. When the

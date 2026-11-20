@@ -359,3 +359,42 @@ new-project, auto-deploy and starter-sync). Scripts, workflows and
 hard to read, and an agent that needed one section read all of it; a page per
 topic is read only when needed. **Revisit when:** a page grows past one topic:
 split it again rather than growing the README.
+
+## Typography and layout are theme tokens
+
+Besides colours, the theme sets the heading font, weight and letter spacing,
+the content and text widths and the section spacing. `packages/ui` turns them
+into `text-display`, `text-h1`/`h2`/`h3`, `text-lead`, `page-container`,
+`page-section` and `prose-width`, and `scripts/heading-sizes.test.ts` (in
+`yarn verify`) fails on a raw `text-2xl` or larger on an h1 to h3. Each page
+lays itself out (`page-section` > `page-container`); the root layout no longer
+wraps pages in a container. **Why:** pages chose their own sizes and drifted;
+an agent building a page from a design needs one vocabulary, and a brand
+changes the look in one file. Sections own their container so one can span
+the full width with its own background. The utilities fall back to the
+default values, so a theme made before the tokens keeps working, and `cn()`
+knows the type utilities are sizes. `scripts/page-layout.test.ts` fails on a
+page without `page-section`, so a page left without the old container is
+caught rather than shown edge to edge.
+
+A project syncing this: wrap each of its own pages (routes, page overrides,
+its features' `*-page.tsx`) in `page-section` > `page-container`, remove any
+container its layout routes add, and move its headings to the nearest
+utility. Heading weight and tracking may change: have a person look at the
+pages before merging. **Revisit when:** a page needs a size the scale doesn't
+have: add a utility rather than a raw size.
+
+## A design record per brand, written with the design skill
+
+`docs/design.md` records what a brand does with the tokens (brief, direction,
+type, section patterns, do's and don'ts, pages), and agents read it before
+building a page. The `design` skill writes it with the person: brief and
+references, two or three directions as throwaway pages on the theme's token
+names, then the theme, global layout and pages. `yarn sync-from-starter` adds
+the starter's copy (the default brand) once, on the sync that brings it, and
+never changes or restores it after (`SEED_ONLY`). **Why:** tokens give one
+vocabulary, but not the choices made with it; without a record each page
+re-derives the brand from CSS. Mockups are agreed before code, but the result lives in the theme
+and the real pages, not in mockup files. **Revisit when:** projects keep
+design records elsewhere (a design tool), or several brands share one
+repository.

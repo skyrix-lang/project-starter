@@ -1,6 +1,8 @@
 /*
  * The default brand. A customer's theme package redefines these variables and
  * nothing else: components only use the tokens (packages/ui/src/styles.css).
+ * Typography and layout are tokens too (packages/theme-default/AGENTS.md lists
+ * them all); a brand font is self-hosted in a fonts.css next to this file.
  * Keep text at WCAG 2.2 AA contrast (4.5:1) against its background, and input
  * borders, the focus ring and buttons at 3:1 against the page:
  * scripts/theme-contrast.test.ts checks every pair, in light mode and in any
@@ -15,6 +17,16 @@
   color-scheme: light;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 0.5rem;
+
+  /* Typography: headings use text-display, text-h1, text-h2, text-h3. */
+  --font-heading: var(--font-sans);
+  --heading-weight: 700;
+  --heading-tracking: -0.025em;
+
+  /* Layout: page-container, page-section, prose-width. */
+  --content-width: 80rem;
+  --prose-width: 65ch;
+  --section-space: 4rem;
 
   --background: #f8fafc;
   --foreground: #0f172a;

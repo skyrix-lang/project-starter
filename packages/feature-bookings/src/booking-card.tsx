@@ -44,7 +44,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
   return (
     <Card data-testid="booking-card" className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
-        <h2 className="font-semibold">{booking.title}</h2>
+        <h2 className="text-h3">{booking.title}</h2>
         <Badge tone={statusTone[booking.status]}>
           {t(`status.${booking.status}`)}
         </Badge>

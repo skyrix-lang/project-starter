@@ -1,6 +1,10 @@
 /*
  * Maps the theme's CSS variables to Tailwind utilities (bg-primary,
- * text-muted-foreground…). Import after "tailwindcss" and before a theme.
+ * text-muted-foreground…), and builds the typography and layout utilities on
+ * them. Import after "tailwindcss" and before a theme.
+ *
+ * Typography and layout tokens have a fallback equal to theme-default's value,
+ * so a theme written before they existed keeps today's look.
  */
 @theme inline {
   --font-sans: var(--font-sans);
@@ -33,6 +37,49 @@
   --color-destructive-soft-foreground: var(--destructive-soft-foreground);
 }
 
+/* The heading font, the body font unless the theme sets --font-heading. */
+@utility font-heading {
+  font-family: var(--font-heading, var(--font-sans));
+}
+
+/* Headings: pick by size, not by tag (an app screen's h1 is often text-h2). */
+@utility text-display {
+  @apply font-heading text-4xl leading-tight sm:text-6xl;
+  font-weight: var(--heading-weight, 700);
+  letter-spacing: var(--heading-tracking, -0.025em);
+}
+@utility text-h1 {
+  @apply font-heading text-3xl leading-tight sm:text-5xl;
+  font-weight: var(--heading-weight, 700);
+  letter-spacing: var(--heading-tracking, -0.025em);
+}
+@utility text-h2 {
+  @apply font-heading text-2xl leading-tight sm:text-3xl;
+  font-weight: var(--heading-weight, 700);
+  letter-spacing: var(--heading-tracking, -0.025em);
+}
+@utility text-h3 {
+  @apply font-heading text-lg leading-tight sm:text-xl;
+  font-weight: var(--heading-weight, 700);
+  letter-spacing: var(--heading-tracking, -0.025em);
+}
+/* The paragraph under a page's title. */
+@utility text-lead {
+  @apply text-lg text-muted-foreground;
+}
+
+/* Layout: a page is page-section > page-container; long text is prose-width. */
+@utility page-container {
+  @apply mx-auto w-full px-4 sm:px-6 lg:px-8;
+  max-width: var(--content-width, 80rem);
+}
+@utility page-section {
+  padding-block: var(--section-space, 4rem);
+}
+@utility prose-width {
+  max-width: var(--prose-width, 65ch);
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -43,5 +90,10 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
   }
 }

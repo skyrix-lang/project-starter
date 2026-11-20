@@ -52,12 +52,19 @@ type for the content (`Event`, `Product`, `FAQPage`, `Article`).
 
 ## 3. Check the structure
 
+- Follow `docs/design.md`: the brand's section patterns, type and do's and
+  don'ts. If it still describes the starter's default brand while the site
+  has its own, or the page's look isn't settled, run the `design` skill first.
 - One `h1`, no skipped heading levels, meaningful `alt` text (or `alt=""` for
   decoration), visible focus, WCAG 2.2 AA contrast. The e2e tests run axe.
 - Add it to `navLinks` in `apps/web/src/components/header.tsx` if needed.
 - Style with the theme's tokens (`bg-primary`, `text-muted-foreground`…), never
   raw colours: branding is one CSS file per customer, and dark mode swaps the
   tokens.
+- Lay the page out as `page-section` > `page-container`, size headings with
+  `text-display` (public hero only), `text-h1`, `text-h2`, `text-h3`, never raw
+  `text-2xl` and up, and keep long text in `prose-width`: AGENTS.md,
+  "Typography and layout".
 - Texts, including the title and labels, come from
   `apps/web/src/locales/<language>.json` through `t()`, in every language.
 - Style a link as a button with `buttonVariants()`; never a `<button>` in a link.

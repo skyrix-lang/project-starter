@@ -2,12 +2,20 @@
 
 What to change to make the starter a customer's site: brand, languages, icons, pages and features.
 
-- **Branding:** copy `packages/theme-default` into a new theme package, change
-  the CSS variables, and import it in `apps/web/src/styles.css`. Components use
+- **Branding:** the `design` skill takes a new brand from a brief and
+  references to the theme and `docs/design.md`. By hand: copy `packages/theme-default` into a new theme package (renamed
+  in its `package.json`, added to `apps/web` with `yarn workspace … add`),
+  change the CSS variables, and import it in `apps/web/src/styles.css`. Components use
   only these tokens. `scripts/theme-contrast.test.ts` (in `yarn verify`) fails
   when a text colour drops below 4.5:1 on its background, or an input border,
   the focus ring or a button below 3:1, in every `theme-*` package and in each
   mode it defines (light, and dark if it has one).
+  Fonts, heading weight and letter spacing, page width, text width and
+  section spacing are tokens too (`--font-heading`, `--heading-weight`,
+  `--content-width`…): every token, and which a brand usually changes, is in
+  `packages/theme-default/AGENTS.md`. A brand font is self-hosted: `.woff2`
+  files in the theme package, declared in a `fonts.css` next to `theme.css`,
+  never Google Fonts or another CDN (same file, "Fonts").
 - **Dark mode:** the theme's `.dark` block. The header's button switches it,
   following the system until used; the choice is kept in this browser and
   applied before the first paint (`apps/web/public/theme.js`). A theme
