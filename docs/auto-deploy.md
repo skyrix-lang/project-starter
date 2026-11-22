@@ -76,7 +76,8 @@ every night, 01:30 Paris ─▶ Nightly: CI in full and an audit, on main's comm
   `main` moved on since) is deployed if the server doesn't run it yet (the
   server keeps the deployed commit in `DEPLOY_DIR/deployed`) and every check
   passed, and it includes what the server runs (never an older commit, if
-  someone deployed by hand in the meantime). Otherwise the night only backs
+  someone deployed by hand in the meantime; a commit `main`'s history doesn't
+  know, such as a deploy from a local commit, is replaced). Otherwise the night only backs
   up. A cancelled nightly deploys nothing either. **Run workflow** on the Deploy
   workflow deploys `main` at once, whatever the hour and the nightly.
 - **The backup** (`scripts/backup-remote.sh`): `pg_dump` with the server's

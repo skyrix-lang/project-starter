@@ -94,9 +94,13 @@ jobs:
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           elif [ "$deployed" = "$head" ]; then
             echo "The server already runs ${head:0:7}: backing up only."
-          elif [ -n "$deployed" ] && ! git merge-base --is-ancestor "$deployed" "$head" 2>/dev/null; then
-            # Deployed by hand since the nightly started, for instance: never
-            # put older code on a newer schema.
+          # A commit this history knows that isn't in the nightly's: deployed
+          # by hand since the nightly started, for instance. Never put older
+          # code on a newer schema. A commit it doesn't know (a force-pushed
+          # main, a deploy from a local commit) doesn't block: the nightly's
+          # checked commit replaces it.
+          elif [ -n "$deployed" ] && git cat-file -e "$deployed^{commit}" 2>/dev/null &&
+            ! git merge-base --is-ancestor "$deployed" "$head"; then
             echo "::warning::The server runs ${deployed:0:7}, which ${head:0:7} doesn't include: not deploying an older commit, backing up only."
           elif [ "$CHECKS" != success ]; then
             echo "::warning::The nightly failed on ${head:0:7}: not deploying tonight, backing up only."
