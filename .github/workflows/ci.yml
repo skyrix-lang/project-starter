@@ -65,9 +65,13 @@ jobs:
         env:
           CI: true
       # Your own runner keeps running what a job started: stop the
-      # containers, so they don't hold its memory until the next run.
+      # containers, so they don't hold its memory until the next run. Each
+      # command may fail (a container never started, a job that stopped
+      # before Yarn was set up): try both, and never fail the job here.
       - if: always() && runner.environment != 'github-hosted'
-        run: yarn db:down; yarn keycloak:down; true
+        run: |
+          yarn db:down || true
+          yarn keycloak:down || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
