@@ -123,8 +123,9 @@ that file covers on its own, without the unit tests or the minimums. `yarn test:
 --coverage` shows the unit tests' alone.
 
 The minimums are each project's own: the sync adds the file once and never
-changes it (`SEED_ONLY`, docs/starter-sync.md), set to 0 by the sync's Claude
-pass, since the starter's levels aren't the project's. Set them once:
+changes it (`SEED_ONLY`, docs/starter-sync.md). The sync sets them to 0
+(`seeded()` in `scripts/sync-from-starter.ts`), since the starter's levels
+aren't the project's, and its Claude pass flags the file for a person. Set them once:
 run `yarn test:coverage` and write its four figures, rounded down. Untested
 files count as uncovered (compiled like the build, so their statements count
 too). Vitest's coverage comes through `vitest-monocart-coverage`, so both
@@ -138,7 +139,7 @@ same file loaded by a unit test, and a file both load counts the two sets
 together. The figures don't change from one run to the next, but the first
 unit test for a file the e2e tests already cover can move the total a little
 either way. If a run fails right after such a test, check the file in the
-report before anything else; never lower the minimums to make it pass. Raise them in the pull request
-that raises coverage, to the new level rounded down; never lower them to make
-a run pass. A whole journey through a feature is an e2e scenario (the
+report before anything else. Raise the minimums in the pull request that
+raises coverage, to the new level rounded down; never lower them to make a
+run pass. A whole journey through a feature is an e2e scenario (the
 `e2e-scenario` skill); logic with many cases is a unit test next to it.
