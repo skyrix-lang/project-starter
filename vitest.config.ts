@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { UNIT_COVERAGE_OPTIONS } from "./scripts/coverage-options.ts";
 
 // `yarn test:unit`: unit and component tests next to the code they test
 // (*.test.ts, *.test.tsx). Node for pure logic and the BFF; jsdom for React.
@@ -7,11 +8,12 @@ export default defineConfig({
     // Never real mail, even when the shell exports SMTP settings: an empty
     // SMTP_HOST means mail is only logged (apps/bff/src/mail.ts).
     env: { SMTP_HOST: "" },
-    // `yarn test:coverage`, which the nightly runs: fails if coverage drops
-    // below these minimums. Raise them when coverage goes up, never lower
-    // them to make a run pass (docs/development.md, "Coverage").
+    // Coverage of these suites alone (`yarn test:unit --coverage`), in V8's
+    // raw format, so `yarn test:coverage` can merge it exactly with the e2e
+    // tests' and check the minimums (scripts/coverage.ts).
     coverage: {
-      provider: "v8",
+      provider: "custom",
+      customProviderModule: "vitest-monocart-coverage",
       include: ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"],
       exclude: [
         "**/*.test.{ts,tsx}",
@@ -19,8 +21,8 @@ export default defineConfig({
         "packages/api/**",
         "packages/db/drizzle/**",
       ],
-      reporter: ["text-summary", "html"],
-      thresholds: { statements: 66, branches: 62, functions: 66, lines: 67 },
+      // @ts-expect-error -- vitest-monocart-coverage's own option.
+      coverageReportOptions: UNIT_COVERAGE_OPTIONS,
     },
     projects: [
       {

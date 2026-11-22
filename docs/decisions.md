@@ -416,7 +416,8 @@ kept out of the runner's home.
 ## A nightly gates the deploy
 
 Every night at 01:30 (Paris) the `Nightly` workflow runs CI itself on
-`main`, plus coverage with minimums that only go up, Playwright in Firefox
+`main`, plus coverage of the unit and e2e tests together with minimums that
+only go up (see "Coverage counts the e2e tests"), Playwright in Firefox
 and WebKit with no retries, and a dependency audit. The deploy that follows
 deploys the commit it checked only if everything passed, and backs up either
 way. A red night opens one `nightly` issue, and while it's open the pull
@@ -435,3 +436,24 @@ project would get the rename for nothing.
 **Revisit when:** the nightly takes too long to finish before 02:00, or a
 project on GitHub's runners runs out of minutes: run the full suite only on
 nights when `main` changed.
+
+## Coverage counts the e2e tests
+
+`yarn test:coverage` merges the coverage of the Vitest suites with the
+Playwright tests' (the browser's in Chromium, the BFF's through
+`NODE_V8_COVERAGE`), by source file, with monocart-coverage-reports, and
+checks it against `coverage-minimums.json`, which each project owns.
+Whole journeys are e2e scenarios (`*.scenario.spec.ts`, the `e2e-scenario`
+skill).
+**Why:** most of an app's code (screens, routes, the BFF's handlers) is
+proven by the e2e tests, so a unit-only figure says little and pushes towards
+unit tests of code that a journey already proves. The minimums differ per
+project, so they live in a file the sync seeds once and never changes,
+rather than in `vitest.config.ts`, which it updates. Chromium only: the other
+browsers run the same code.
+A file's totals depend on which compile loaded it (Vitest's or the
+build's), so the figures are stable from run to run but not exact
+per file (docs/development.md, "Coverage").
+**Revisit when:** the e2e run with coverage gets much slower than without, a
+project needs coverage per package, or that limit makes a ratchet fail for
+adding a test.

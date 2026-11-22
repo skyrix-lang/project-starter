@@ -103,7 +103,9 @@ starter's file now, and the project's file. Then:
 `docs/design.md` is the project's own design (the `design` skill writes it):
 a project gets the starter's, describing the default brand, as a starting
 point on the sync that brings it, and after that it's never changed (nor
-restored if the project deletes it). It never touches
+restored if the project deletes it). `coverage-minimums.json` works the same
+way: the starter's minimums arrive once, and the project sets its own
+(docs/development.md, "Coverage"). It never touches
 `yarn.lock`: when a `package.json` changed, it runs
 `yarn install`, which rewrites it. The sync tooling itself
 (`scripts/sync-from-starter.ts`, `scripts/rename.ts`, their tests and this

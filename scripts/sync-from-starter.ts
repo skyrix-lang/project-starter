@@ -40,8 +40,18 @@ export const ALWAYS_IGNORED = ["yarn.lock", "default.json", CONFIG_FILE];
 /** The project's own once it has them: added when the starter adds them,
  * never changed or restored after.
  * The starter's copy is a starting point (its design.md describes the
- * default brand; the `design` skill rewrites it). */
-export const SEED_ONLY = new Set(["docs/design.md"]);
+ * default brand; the `design` skill rewrites it; coverage-minimums.json holds
+ * the starter's coverage, which each project replaces with its own). */
+export const SEED_ONLY = new Set(["docs/design.md", "coverage-minimums.json"]);
+
+/** What a project gets the first time a seeded file arrives, where the
+ * starter's copy would be wrong for it: coverage minimums of 0, since the
+ * starter's coverage isn't the project's (docs/development.md, "Coverage"). */
+export function seeded(path: string, content: Buffer): Buffer {
+  if (path !== "coverage-minimums.json") return content;
+  const zero = { statements: 0, branches: 0, functions: 0, lines: 0 };
+  return Buffer.from(`${JSON.stringify(zero, null, 2)}\n`);
+}
 
 /** The sync tooling and its guide: always the starter's, copied as they are
  * (they hold the starter's names on purpose; the sync script needs rename.ts). */
@@ -362,7 +372,10 @@ function main() {
       if (action.kind === "write") {
         if (!options.dryRun) {
           mkdirSync(dirname(path), { recursive: true });
-          writeFileSync(path, action.content);
+          writeFileSync(
+            path,
+            ours ? action.content : seeded(path, action.content),
+          );
           if (mode(target, path) === "100755") chmodSync(path, 0o755);
         }
         (ours ? done.updated : done.added).push(path);

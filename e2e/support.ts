@@ -1,4 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import {
   expect,
@@ -20,11 +22,14 @@ import { createLocalSession, storageState } from "../scripts/local-session";
  *   `test.use({ allowConsoleErrors: true })`.
  * - an accessibility violation (WCAG 2.2 AA, checked with axe) on the app
  *   page the test ends on.
+ * With E2E_COVERAGE=1 (`yarn test:coverage`), each test in Chromium also
+ * records which of the app's code ran in the browser (scripts/coverage.ts).
  */
 export const test = base.extend<{
   allowConsoleErrors: boolean;
   failOnConsoleError: void;
   checkAccessibility: void;
+  browserCoverage: void;
 }>({
   // Sign-ins are rate limited per client address, which the app reads from
   // x-forwarded-for. Each test gets its own, as if from its own machine, so
@@ -71,6 +76,44 @@ export const test = base.extend<{
           ({ id, nodes }) => `${id}: ${nodes.map((n) => n.target).join(", ")}`,
         ),
       ).toEqual([]);
+    },
+    { auto: true },
+  ],
+  browserCoverage: [
+    async ({ page, browserName, baseURL }, use) => {
+      // Only Chromium can report coverage.
+      if (!process.env.E2E_COVERAGE || browserName !== "chromium") {
+        await use();
+        return;
+      }
+      // Only the test's own page: a page it opens itself isn't recorded.
+      await page.coverage.startJSCoverage({ resetOnNavigation: false });
+      await use();
+      const entries = await page.coverage.stopJSCoverage();
+      // The app's own bundles, each with its source map from the build, so
+      // the report shows source files rather than minified bundles.
+      const assets = `${baseURL}/assets/`;
+      const ours = await Promise.all(
+        entries
+          .filter((entry) => entry.url.startsWith(assets))
+          .map(async (entry) => {
+            const file = `apps/web/dist/assets/${entry.url.slice(assets.length).split("?")[0]}`;
+            const map = await readFile(`${file}.map`, "utf8").catch(() => "");
+            if (!map) return entry;
+            // Sources as absolute paths: the map's are relative to itself.
+            const sourceMap = JSON.parse(map) as { sources: string[] };
+            sourceMap.sources = sourceMap.sources.map((source) =>
+              resolve(dirname(file), source),
+            );
+            return { ...entry, sourceMap };
+          }),
+      );
+      if (ours.length === 0) return;
+      // Loaded only when recording, so a plain `yarn test` doesn't pay for it.
+      const { CoverageReport } = await import("monocart-coverage-reports");
+      const { E2E_COVERAGE_OPTIONS } =
+        await import("../scripts/coverage-options");
+      await new CoverageReport(E2E_COVERAGE_OPTIONS).add(ours);
     },
     { auto: true },
   ],

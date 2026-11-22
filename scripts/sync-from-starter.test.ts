@@ -4,6 +4,7 @@ import {
   decide,
   isIgnored,
   parseNameStatus,
+  seeded,
   workspaceOf,
 } from "./sync-from-starter";
 
@@ -165,5 +166,25 @@ describe("parseNameStatus", () => {
       ["A", "b c.ts"],
       ["D", "d.ts"],
     ]);
+  });
+});
+
+describe("seeded", () => {
+  it("gives a project coverage minimums of 0, not the starter's", () => {
+    const starters = b(
+      '{ "statements": 91, "branches": 80, "functions": 92, "lines": 96 }',
+    );
+    expect(
+      JSON.parse(seeded("coverage-minimums.json", starters).toString()),
+    ).toEqual({
+      statements: 0,
+      branches: 0,
+      functions: 0,
+      lines: 0,
+    });
+  });
+
+  it("leaves every other seeded file as the starter has it", () => {
+    expect(seeded("docs/design.md", b("# Design")).toString()).toBe("# Design");
   });
 });

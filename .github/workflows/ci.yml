@@ -43,9 +43,6 @@ jobs:
       - run: yarn install --immutable
       # What agents run after each step.
       - run: yarn verify
-      # At night: fails if coverage dropped below vitest.config.ts's minimums.
-      - if: inputs.nightly
-        run: yarn test:coverage
       # While the nightly is red (an open issue labelled "nightly"), the pull
       # requests that merge themselves wait: Renovate's and the sync from the
       # starter. Not Renovate's security fixes (label "security", default.json),
@@ -98,7 +95,9 @@ jobs:
         run: yarn playwright install ${{ steps.browsers.outputs.list }}
       # Starts Postgres and Keycloak in Docker, builds the app and runs the
       # tests, exactly as it does locally.
-      - run: yarn test
+      # At night, with coverage: the unit and e2e tests' together, checked
+      # against coverage-minimums.json (scripts/coverage.ts).
+      - run: ${{ inputs.nightly && 'yarn test:coverage' || 'yarn test' }}
         env:
           CI: true
           E2E_RETRIES: ${{ inputs.nightly && '0' || '' }}
@@ -115,7 +114,9 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: playwright-report${{ inputs.nightly && '-nightly' || '' }}
-          path: playwright-report/
+          path: |
+            playwright-report/
+            coverage/report/
           retention-days: 14
 
   image:

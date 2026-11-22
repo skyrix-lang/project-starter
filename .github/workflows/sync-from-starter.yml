@@ -142,6 +142,10 @@ jobs:
                project: an import of something the project removed, a setting the project
                configures differently, a decision in docs/decisions.md it contradicts.
                Change only what clearly needs it; list anything you're unsure of instead.
+               If `coverage-minimums.json` is new in this sync, the sync set every
+               minimum to 0: the starter's coverage isn't this project's. Put "set this
+               project's coverage minimums (docs/development.md, \"Coverage\")" under
+               what needs a human decision.
 
             3. Check. Run `yarn install` (if a package.json changed), `yarn format` and
                `yarn verify`, and fix what the merge broke. Follow AGENTS.md.
