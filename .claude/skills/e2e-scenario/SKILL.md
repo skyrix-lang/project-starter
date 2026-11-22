@@ -9,7 +9,9 @@ A scenario plays one whole journey, as a person would live it, in one test.
 The feature's other tests check each behaviour on its own. A scenario checks
 that the steps work one after the other, with the state each step leaves
 behind: what a person does on Monday is still there on Tuesday.
-`e2e/bookings.scenario.spec.ts` is the reference: copy its shape.
+`e2e/bookings.scenario.spec.ts` is the reference: copy its shape. A project
+that removed the demo bookings feature removed it too: copy one of its own
+`e2e/*.scenario.spec.ts` instead, or follow the steps below.
 
 ## 1. Write the journey first, in words
 

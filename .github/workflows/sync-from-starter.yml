@@ -25,6 +25,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # to start again when the sync pull request merged meanwhile
   id-token: write # Claude's action exchanges it for a short-lived token
 
 env:
@@ -165,7 +166,20 @@ jobs:
           # also needs STARTER_SYNC_TOKEN, since CI never runs on a pull
           # request opened with the default token.
           CLEAN: ${{ !steps.sync.outputs.conflicts && steps.claude.outcome == 'success' && env.HAS_SYNC_TOKEN == 'true' && 'true' || '' }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.branch.outputs.pr }}
         run: |
+          # The sync pull request this run continued merged (or closed) while
+          # it ran: this run's branch is now stale, and pushing it would open
+          # a pull request full of conflicts, or be refused. Start again from
+          # the default branch instead (the dispatched run waits for this one,
+          # concurrency above).
+          if [ -n "$PR" ] && [ "$(gh pr view "$PR" --json state --jq .state)" != OPEN ]; then
+            echo "::warning::Sync pull request #$PR merged or closed during this run: starting again from the default branch."
+            gh workflow run sync-from-starter.yml --ref "$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)"
+            echo "restarted=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           notes=""
           if [ -f .starter-sync-notes.md ]; then
             mv .starter-sync-notes.md "$RUNNER_TEMP/notes.md"
@@ -212,7 +226,7 @@ jobs:
           if [ -n "$remaining" ]; then echo "draft=true" >> "$GITHUB_OUTPUT"; fi
           if [ -n "$CLEAN" ] && [ -z "$remaining" ]; then echo "clean=true" >> "$GITHUB_OUTPUT"; fi
 
-      - if: steps.sync.outputs.changed
+      - if: steps.sync.outputs.changed && !steps.commit.outputs.restarted
         env:
           GH_TOKEN: ${{ secrets.STARTER_SYNC_TOKEN || github.token }}
           PR: ${{ steps.branch.outputs.pr }}
