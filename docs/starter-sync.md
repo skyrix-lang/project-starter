@@ -169,6 +169,11 @@ and whenever you click **Run workflow** in the project's Actions tab.
    it wasn't sure of in the pull request.
 3. It opens the pull request, or updates the open one. Conflicts Claude
    couldn't resolve (or with no Claude secret) leave it a draft, listing them.
+   If the pull request it continued merged or closed while it ran (a clean
+   sync merging itself), it pushes nothing and starts again from the default
+   branch instead: the workflow dispatches itself, which needs its
+   `actions: write` permission (granted in the workflow file; the "Read and
+   write permissions" setting below allows it).
 4. A **clean** sync merges itself once CI passes: the starter merged without
    conflicts, Claude's pass succeeded, and `STARTER_SYNC_TOKEN` is set (CI
    doesn't run otherwise). Anything else waits for you to review and merge:
