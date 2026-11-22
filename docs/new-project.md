@@ -198,6 +198,82 @@ To have `main` deployed to a server every night once CI passed on it, with
 the database backed up to Cloudflare R2 first: the steps, SSH key, secrets
 and bucket included, are in [auto-deploy.md](auto-deploy.md).
 
+## In an organization, private, on your own runners
+
+For a project owned by an organization (here `acme-org`) rather than your
+account, as a private repository whose CI runs on the organization's
+self-hosted runners. Steps 1 to 8 still apply, with these differences.
+
+- **Private on GitHub Free (You decide first):** rulesets aren't enforced on
+  private repositories (the API answers 403 "Upgrade to GitHub Pro"), so step
+  3 can't protect `main`, and clean syncs wait for you to merge them (the
+  sync workflow warns). A paid plan (GitHub Team for an organization) fixes
+  it, or keep the repository public.
+- **Step 2 (Claude):** `gh repo create acme-org/acme-portal --private --source . --push`.
+- **Step 4, a token for the organization (You):** a fine-grained token has a
+  single resource owner, so the organization's projects need their own. The
+  starter has room for one such organization (a single `STARTER_SYNC_TOKEN_2`
+  and `STARTER_SYNC_TOKEN_2_OWNER`): a second one would replace the first's
+  token and break its syncs. Once, for that organization: a
+  [new fine-grained token](https://github.com/settings/personal-access-tokens/new),
+  resource owner `acme-org`, "Only select repositories" (its projects), with
+  _Contents_, _Pull requests_ and _Workflows_ set to read and write. The
+  organization may hold it for an admin's approval (its **Settings →
+  Personal access tokens → Pending requests**). Then, once, in the starter:
+
+  ```bash
+  gh secret set STARTER_SYNC_TOKEN_2 -R skyrix-lang/project-starter
+  ```
+
+  ```bash
+  gh variable set STARTER_SYNC_TOKEN_2_OWNER -R skyrix-lang/project-starter --body acme-org
+  ```
+
+  For each project in the organization: add the repository to that token,
+  and set the project's own `STARTER_SYNC_TOKEN` to it (not your account's).
+
+- **Step 5 (Claude):** add `acme-org/acme-portal` to `STARTER_PROJECTS`.
+- **Step 6, apps on the organization (You):** install
+  [Renovate](https://github.com/apps/renovate) and
+  [Claude](https://github.com/apps/claude) on `acme-org` for selected
+  repositories, and add the project
+  (`github.com/organizations/acme-org/settings/installations` once they're
+  installed). The Claude workflows can't work without the app: they get their
+  GitHub token through it, not from the workflow's own token.
+  `renovate.json` keeps extending the public starter's preset.
+- **Own runners (You, then Claude):** runners registered on the organization
+  with a label (here `my-runners`), with what
+  [development.md](development.md#ci) ("CI") lists installed: Node with
+  Corepack, `gh`, git, jq, curl, Docker with compose and buildx, and
+  Chromium's system libraries. In the organization's **Settings → Actions →
+  Runner groups**, leave "Allow public repositories" off (a public
+  repository's pull requests from forks would run on your machine), and
+  limit the group to selected repositories. Then point the project at them:
+
+  ```bash
+  gh variable set RUNNER -R acme-org/acme-portal --body my-runners
+  ```
+
+  Step 8's pull request then runs its jobs on `my-runners`; the nightly
+  deploy stays on GitHub's runners.
+
+### Moving an existing project into the organization
+
+1. **Transfer (Claude, after you say yes):**
+   `gh api repos/skyrix-lang/acme-portal/transfer -f new_owner=acme-org`, then
+   `gh repo edit acme-org/acme-portal --visibility private --accept-visibility-change-consequences`
+   if it becomes private. Secrets, variables, environments and settings come
+   along.
+2. **Token (You):** your account's token no longer covers it (checkouts fail
+   with 403): add it to the organization's token and set its
+   `STARTER_SYNC_TOKEN` again, as above.
+3. **The starter (Claude):** in `STARTER_PROJECTS`, replace
+   `skyrix-lang/acme-portal` with `acme-org/acme-portal`.
+4. **Apps and runners (You):** as above.
+5. **Locally (Claude):**
+   `git remote set-url origin git@github.com:acme-org/acme-portal.git`. CI
+   pushes the image to `ghcr.io/acme-org/acme-portal` from then on.
+
 ## When something doesn't work
 
 | Symptom                                           | Cause, and the fix                                                                                                                                                      |
@@ -213,6 +289,9 @@ and bucket included, are in [auto-deploy.md](auto-deploy.md).
 | `gh pr merge --auto`: "auto-merge is not allowed" | Step 3 wasn't run on this repository.                                                                                                                                   |
 | A vulnerability alert gets no pull request        | Dependabot alerts are off (step 7), Renovate hasn't run since, the fix is a major update (waits for you, on the Dependency Dashboard), or there's no fixed version yet. |
 | Pull requests from Dependabot                     | Dependabot security updates are on, or a `.github/dependabot.yml` exists: turn them off and delete it (step 7), and close its pull requests.                            |
+| `corepack` or `gh`: command not found             | On a self-hosted runner, a tool GitHub's runners have is missing: install it on the runner ([development.md](development.md#ci), "CI").                                 |
+| Checkout or sync fails with 403 after a transfer  | The project's `STARTER_SYNC_TOKEN` belongs to the old owner: use the new owner's token ("In an organization" above).                                                    |
+| The Claude workflows fail in an organization      | The Claude GitHub app isn't installed on the organization, or not for this repository ("In an organization" above).                                                     |
 
 ## Once, for every project
 

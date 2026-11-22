@@ -64,8 +64,13 @@ Every job then runs there, except the nightly deploy (`deploy.yml`), which
 stays on GitHub's runners: it writes its SSH key into the runner's home, which
 every job on a self-hosted runner shares.
 
-What such a runner needs: Docker (rootless is fine) with the compose and
-buildx plugins, and Chromium's system libraries, installed once by an admin,
-since the e2e job installs the browser without them (that needs sudo) when
-it's not on GitHub's runners. The e2e jobs of a repository run one at a time
-there, as they share that Docker's Postgres and Keycloak containers.
+What such a runner needs, installed once by an admin, since the workflows
+use these before any setup step and the runner has no sudo: Node with
+Corepack enabled (CI runs `corepack enable` before `setup-node`), the `gh`
+CLI (the sync and notify workflows), git, jq, curl, Docker (rootless is fine)
+with the compose and buildx plugins, and Chromium's system libraries (the e2e
+job installs the browser without them when it's not on GitHub's runners). The
+e2e jobs of a repository run one at a time there, as they share that Docker's
+Postgres and Keycloak containers. Setting up a project in an organization,
+private, on such runners: [new-project.md](new-project.md), "In an
+organization, private, on your own runners".
