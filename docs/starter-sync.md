@@ -216,6 +216,8 @@ And once, in the starter:
   variable: the starter uses `STARTER_SYNC_TOKEN_2` for that owner's projects
   in `STARTER_PROJECTS`, and `STARTER_SYNC_TOKEN` for the others. In such a
   project, its own `STARTER_SYNC_TOKEN` secret is the second owner's token.
+  The steps: [new-project.md](new-project.md), "In an organization, private,
+  on your own runners".
 - `scripts/setup-github.sh` for the starter too, so your own pull requests
   into it merge themselves: `gh pr merge --auto --merge` on a pull request
   (or ask Claude to turn it on).
