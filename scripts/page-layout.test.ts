@@ -52,6 +52,22 @@ describe("missingPageSection", () => {
     ).toBeNull();
   });
 
+  it("doesn't count page-section in a comment", () => {
+    const jsx = `<main className="flex-1">{/* Each page is page-section. */}<Outlet /></main>`;
+    const line = `// Wrap it in page-section.\n<div className="space-y-6" />`;
+    const block = `/* page-section */\n<div className="space-y-6" />`;
+    for (const source of [jsx, line, block]) {
+      expect(missingPageSection(route, source)).toBe(
+        `${route}: wrap the page in page-section > page-container`,
+      );
+    }
+  });
+
+  it("keeps a URL in a string while dropping comments", () => {
+    const source = `<a href="https://example.com" className="page-section" />`;
+    expect(missingPageSection(route, source)).toBeNull();
+  });
+
   it("requires page-section in a *-page.tsx even without className", () => {
     const file = "packages/feature-x/src/x-page.tsx";
     expect(missingPageSection(file, `return <Card>{children}</Card>;`)).toBe(
