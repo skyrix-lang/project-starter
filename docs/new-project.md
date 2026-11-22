@@ -211,8 +211,10 @@ self-hosted runners. Steps 1 to 8 still apply, with these differences.
   it, or keep the repository public.
 - **Step 2 (Claude):** `gh repo create acme-org/acme-portal --private --source . --push`.
 - **Step 4, a token for the organization (You):** a fine-grained token has a
-  single resource owner, so the organization's projects need their own. Once
-  per organization: a
+  single resource owner, so the organization's projects need their own. The
+  starter has room for one such organization (a single `STARTER_SYNC_TOKEN_2`
+  and `STARTER_SYNC_TOKEN_2_OWNER`): a second one would replace the first's
+  token and break its syncs. Once, for that organization: a
   [new fine-grained token](https://github.com/settings/personal-access-tokens/new),
   resource owner `acme-org`, "Only select repositories" (its projects), with
   _Contents_, _Pull requests_ and _Workflows_ set to read and write. The
