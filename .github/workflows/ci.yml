@@ -17,7 +17,7 @@ permissions:
 jobs:
   checks:
     name: Format, types, lint, boundaries, API contract and unit tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -36,8 +36,15 @@ jobs:
 
   e2e:
     name: Playwright (with axe)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
+    # On your own runners (the RUNNER variable), one e2e job at a time: they
+    # share one Docker, where Postgres and Keycloak are containers with fixed
+    # names and ports (scripts/db-up.sh, scripts/keycloak-up.sh). GitHub's
+    # runners each have their own, so there every run is its own group.
+    concurrency:
+      group: e2e-${{ vars.RUNNER || github.run_id }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
       - run: corepack enable
@@ -46,12 +53,21 @@ jobs:
           node-version-file: .nvmrc
           cache: yarn
       - run: yarn install --immutable
-      - run: yarn playwright install --with-deps chromium
+      # The browser's system libraries need sudo: on your own runners they're
+      # installed already (docs/development.md, "CI").
+      - if: runner.environment == 'github-hosted'
+        run: yarn playwright install --with-deps chromium
+      - if: runner.environment != 'github-hosted'
+        run: yarn playwright install chromium
       # Starts Postgres and Keycloak in Docker, builds the app and runs the
       # tests, exactly as it does locally.
       - run: yarn test
         env:
           CI: true
+      # Your own runner keeps running what a job started: stop the
+      # containers, so they don't hold its memory until the next run.
+      - if: always() && runner.environment != 'github-hosted'
+        run: yarn db:down; yarn keycloak:down; true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -63,7 +79,7 @@ jobs:
     name: Image (SBOM, provenance, signature)
     needs: [checks, e2e]
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

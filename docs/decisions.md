@@ -398,3 +398,16 @@ re-derives the brand from CSS. Mockups are agreed before code, but the result li
 and the real pages, not in mockup files. **Revisit when:** projects keep
 design records elsewhere (a design tool), or several brands share one
 repository.
+
+## GitHub's runners, or your own with one variable
+
+Every workflow job runs on `${{ vars.RUNNER || 'ubuntu-latest' }}`: GitHub's
+runners unless the repository sets `RUNNER` to the label of its self-hosted
+runners (docs/development.md, "CI"). The nightly deploy always stays on
+GitHub's runners. **Why:** private repositories on GitHub Free get few
+hosted minutes, and a project with its own server can run its CI there; one
+variable keeps the workflows the same in every project, so syncs don't undo
+it. The deploy job writes an SSH key and known hosts into the runner's home,
+which a self-hosted runner shares between jobs and repositories. **Revisit
+when:** a project needs a different runner per job, or the deploy key can be
+kept out of the runner's home.
