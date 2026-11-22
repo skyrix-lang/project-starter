@@ -81,6 +81,7 @@ until answers; do
 done
 
 # Done: nothing left for a rollback to undo in the database, and the commit
-# the server runs, which the nightly Deploy workflow compares with main.
+# the server runs, which the Deploy workflow compares with the commit the
+# nightly checked.
 remote "rm -f '$dir/deploy-state'; echo '$(git rev-parse HEAD)' >'$dir/deployed'"
 echo "Deployed $commit: $url answers."

@@ -18,6 +18,9 @@ packages/api/src/.check-*
 test-results/
 playwright-report/
 
+# Vitest coverage (yarn test:coverage)
+coverage/
+
 # IDE
 .idea
 

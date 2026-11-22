@@ -1,14 +1,16 @@
 # Deploying a project automatically
 
 How to make a project made from the starter deploy itself to a server (a VPS
-with Docker) every night at 02:00, with its database backed up first. With
-auto-merge on ([new-project.md](new-project.md)), the whole chain runs on its
-own: a pull request merges once CI passes; that night, the deploy backs the
+with Docker) every night around 02:00, with its database backed up first.
+With auto-merge on ([new-project.md](new-project.md)), the whole chain runs on
+its own: a pull request merges once CI passes; that night, the nightly runs
+every check on `main` (development.md, "The nightly") and, if they all pass,
+the deploy backs the
 database up to a Cloudflare R2 bucket and proves the backup restores, then
 migrates, starts the new version and checks the public https address. If
 anything fails, the previous version **and its data** stay or are put back,
-and GitHub notifies you that the run failed. Nights with nothing new, it backs
-up all the same.
+and a `nightly` issue says what failed. Nights with nothing new, or with a
+failed check, it backs up all the same.
 
 **Everything ships with the starter, switched off.** `scripts/deploy.sh`
 (`yarn deploy`), `scripts/deploy-remote.sh`, `scripts/rollback-remote.sh`,
@@ -44,9 +46,12 @@ they go in variables, never in a committed file.
 ## How it works
 
 ```
-every night, 02:00 Paris ─▶ Deploy workflow (SSH, a key for this only, host key pinned)
+every night, 01:30 Paris ─▶ Nightly: CI in full and an audit, on main's commit
+                             │ then, around 02:00
+                             ▼
+                           Deploy workflow (SSH, a key for this only, host key pinned)
                              │
-         main new on the server and CI passed on it?
+         that commit new on the server and every check passed?
               │ no                                   │ yes
               ▼                                      ▼
      back up the database              yarn deploy: copy the commit, build the image
@@ -62,15 +67,18 @@ every night, 02:00 Paris ─▶ Deploy workflow (SSH, a key for this only, host 
                                        migration ran), start the previous image
 ```
 
-- **When:** GitHub's cron is UTC only, so two crons (`0 0 * * *` and
-  `0 1 * * *`) run; a first job keeps the one that is 02:00 in
-  `Europe/Paris` that day (summer or winter time). At 02:00 nobody uses the
-  app, so stopping it for about a minute costs nothing.
-- **What:** `main` is deployed if the server doesn't run it yet (the server
-  keeps the deployed commit in `DEPLOY_DIR/deployed`) and CI passed on it
-  (a push run of `CI` for that commit). Otherwise the night only backs up.
-  **Run workflow** in the Actions tab deploys `main` at once, whatever the
-  hour.
+- **When:** the `Nightly` workflow starts at 01:30. GitHub's cron is UTC
+  only, so two crons (`30 23 * * *` and `30 0 * * *`) run; a first job keeps
+  the one that is 01:30 in `Europe/Paris` that day (summer or winter time).
+  The deploy starts once its checks are done, between about 01:45 and 02:15,
+  when nobody uses the app and stopping it for about a minute costs nothing.
+- **What:** the commit the nightly checked (`main` when it started, even if
+  `main` moved on since) is deployed if the server doesn't run it yet (the
+  server keeps the deployed commit in `DEPLOY_DIR/deployed`) and every check
+  passed, and it includes what the server runs (never an older commit, if
+  someone deployed by hand in the meantime). Otherwise the night only backs
+  up. A cancelled nightly deploys nothing either. **Run workflow** on the Deploy
+  workflow deploys `main` at once, whatever the hour and the nightly.
 - **The backup** (`scripts/backup-remote.sh`): `pg_dump` with the server's
   Postgres version, restored into a throwaway Postgres whose tables (and,
   before a deploy, every table's row count) must match the database, then
@@ -158,23 +166,29 @@ first, from your machine.
 
 ## 2. The workflow (Claude, only to change it)
 
-`.github/workflows/deploy.yml` is already there and needs no change for
-02:00 Paris time. How it works, for when it must change:
+`.github/workflows/deploy.yml` and `.github/workflows/nightly.yml` are
+already there and need no change for 02:00 Paris time. How they work, for
+when they must change:
 
-- `on: schedule` with two crons, `"0 0 * * *"` and `"0 1 * * *"` (GitHub's
-  clock is UTC), and `workflow_dispatch`;
-- a first job, `when`, with `if: vars.DEPLOY_SSH != ''` (the off switch),
-  outputs `go=true` for a manual run, or when `github.event.schedule` is the
-  cron that is 02:00 in Paris today (`TZ=Europe/Paris date +%z` is `+0200`:
-  `"0 0 * * *"`, otherwise `"0 1 * * *"`). **Another time zone or hour:**
-  change both crons and that test together;
+- the nightly has `on: schedule` with two crons, `"30 23 * * *"` and
+  `"30 0 * * *"` (GitHub's clock is UTC), and `workflow_dispatch`. Its first
+  job, `when`, outputs `go=true` for a manual run, or when
+  `github.event.schedule` is the cron that is 01:30 in Paris today
+  (`TZ=Europe/Paris date +%z` is `+0200`: `"30 23 * * *"`, otherwise
+  `"30 0 * * *"`). **Another time zone or hour:** change both crons and that
+  test together;
+- after its checks, the nightly calls `deploy.yml` (`workflow_call`) with the
+  commit it checked (`sha`) and whether they all passed (`checks`), and
+  `secrets: inherit`. The deploy also has `workflow_dispatch`, for a deploy
+  by hand;
 - `concurrency: { group: deploy, cancel-in-progress: false }`: never
   cancelled in the middle of a migration;
-- the `deploy` job (`environment: production`, checkout of `main`) writes
-  the key and `known_hosts` from the secrets, then decides: a manual run
-  deploys; a scheduled one deploys only if the server's
-  `DEPLOY_DIR/deployed` isn't `main`'s commit and `CI` passed on a push of
-  it, and otherwise only runs `scripts/backup-remote.sh` over ssh;
+- the `deploy` job (`if: vars.DEPLOY_SSH != ''`, the off switch;
+  `environment: production`; checkout of the nightly's commit, or `main` by
+  hand) writes the key and `known_hosts` from the secrets, then decides: a
+  manual run deploys; a nightly one deploys only if the server's
+  `DEPLOY_DIR/deployed` isn't that commit and `checks` is `success`, and
+  otherwise only runs `scripts/backup-remote.sh` over ssh;
 - a last step, `if: always()`, deletes the key.
 
 The only per-project setting is `DEPLOY_DIR`'s default (`apps/<slug>`), set
@@ -346,16 +360,16 @@ database", if the release had a migration), "Rolled back" and "still doesn't
 answer" (the fake address never answers): the site itself is back on the
 previous version. Then **Run workflow** once to deploy `main` again.
 
-The next scheduled runs: Actions → Deploy shows one run at 00:00 and one at
-01:00 UTC each night; the one that isn't 02:00 in Paris stops after its first
-job, skipping `deploy`. That's expected.
+The next scheduled runs: Actions → Nightly shows one run at 23:30 and one at
+00:30 UTC each night; the one that isn't 01:30 in Paris stops after its first
+job, skipping the rest. That's expected.
 
 ## When something doesn't work
 
 | Symptom                                                 | Cause, and the fix                                                                                                                                                                                                                                                                      |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Deploy job is **skipped**                           | On one of the two nightly runs, expected: that one isn't 02:00 in Paris. On both, or on Run workflow: `DEPLOY_SSH` is missing at the **repository** level (often set on the environment instead): move it (step 5).                                                                     |
-| "has no successful CI run: not deploying tonight"       | CI failed or didn't run on `main`'s last commit: the night only backed up. Fix on a branch and merge; it deploys the next night (or Run workflow).                                                                                                                                      |
+| The Deploy job is **skipped**                           | On one of the two nightly runs, expected: that one isn't 01:30 in Paris. On both, or on Run workflow: `DEPLOY_SSH` is missing at the **repository** level (often set on the environment instead): move it (step 5).                                                                     |
+| "The nightly failed on …: not deploying tonight"        | A nightly check failed: the night only backed up, and the `nightly` issue says which. Fix on a branch and merge; it deploys the next night (or Run workflow).                                                                                                                           |
 | "backup.env is missing" / "The backup failed"           | Step 6 isn't done, or the R2 key, bucket or account ID is wrong: the old version runs again and nothing was migrated. Run the backup by hand (step 6) to see why.                                                                                                                       |
 | "R2 holds … bytes … the upload is incomplete"           | The upload to R2 broke: nothing deployed. Usually a network hiccup; Run workflow again.                                                                                                                                                                                                 |
 | "THE DATABASE RESTORE FAILED"                           | The rollback couldn't restore (the previous version runs on the migrated database). Restore by hand ("Day to day"), now.                                                                                                                                                                |

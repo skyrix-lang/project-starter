@@ -1,0 +1,182 @@
+name: Nightly
+
+# Every night at 01:30, Paris time, on main as it is then:
+#   - CI itself (ci.yml, with `nightly: true`): yarn verify plus coverage, and
+#     Playwright in Chromium, Firefox and WebKit with no retries, so a flaky
+#     test fails here instead of passing on a retry;
+#   - a dependency audit: new flaws appear in code that hasn't changed;
+#   - then the deploy (deploy.yml), around 02:00: it deploys the commit
+#     checked here if everything passed, and backs up only otherwise.
+# Anything red opens one issue labelled "nightly" (or comments on the open
+# one); the next green night closes it. While it's open, the pull requests
+# that merge themselves wait (ci.yml, "Is the nightly green?"), and closing it,
+# by the nightly or by hand (nightly-closed.yml), runs their checks again.
+# A cancelled run opens no issue and deploys nothing; it backs up.
+# "Run workflow" in the Actions tab runs it all now, on main only: it deploys
+# what it checked.
+# Spec: docs/specs/nightly-and-release.md.
+
+on:
+  schedule:
+    # GitHub's clock is UTC: 01:30 in Paris is 23:30 UTC in summer and 00:30
+    # in winter. Both run; the "when" job keeps the one that is 01:30 there.
+    - cron: "30 23 * * *"
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  when:
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 2
+    outputs:
+      go: ${{ steps.when.outputs.go }}
+    steps:
+      - id: when
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          # Only main: the deploy ships the commit checked here.
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::The nightly runs on main only, not $GITHUB_REF: it deploys what it checks."
+            exit 1
+          fi
+          if [ -z "$SCHEDULE" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Which UTC time is 01:30 in Paris today; the cron that fired says
+          # which run this is, even if GitHub started it late.
+          case "$(TZ=Europe/Paris date +%z)" in
+            +0200) wanted="30 23 * * *" ;;
+            *) wanted="30 0 * * *" ;;
+          esac
+          if [ "$SCHEDULE" = "$wanted" ]; then echo "go=true" >> "$GITHUB_OUTPUT"
+          else echo "Not 01:30 in Paris on this run: the other one runs the nightly."; fi
+
+  ci:
+    needs: when
+    if: needs.when.outputs.go == 'true'
+    uses: ./.github/workflows/ci.yml
+    with:
+      nightly: true
+    # What ci.yml's jobs ask for, even the image job it skips at night:
+    # GitHub refuses a called workflow that asks for more than its caller
+    # allows.
+    permissions:
+      contents: read
+      issues: read
+      packages: write
+      id-token: write
+
+  audit:
+    name: Dependency audit
+    needs: when
+    if: needs.when.outputs.go == 'true'
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - run: corepack enable
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      # High and critical advisories, in every workspace, direct or not. To
+      # accept one that has no fix yet, add it to npmAuditIgnoreAdvisories in
+      # .yarnrc.yml with a comment saying why and until when.
+      - run: yarn npm audit --all --recursive --severity high
+
+  # One result for the deploy: did every check pass on this commit?
+  checks:
+    needs: [when, ci, audit]
+    if: always() && needs.when.outputs.go == 'true'
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 2
+    outputs:
+      result: ${{ steps.result.outputs.result }}
+    steps:
+      - id: result
+        env:
+          CI_RESULT: ${{ needs.ci.result }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
+        run: |
+          if [ "$CI_RESULT" = success ] && [ "$AUDIT_RESULT" = success ]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "CI: $CI_RESULT, audit: $AUDIT_RESULT."
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: [when, checks]
+    if: always() && needs.when.outputs.go == 'true'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      sha: ${{ github.sha }}
+      checks: ${{ needs.checks.outputs.result || 'failure' }}
+    secrets: inherit
+    permissions:
+      contents: read
+
+  report:
+    needs: [when, ci, audit, deploy]
+    if: always() && needs.when.outputs.go == 'true'
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: read
+      actions: write # runs the held pull requests' checks again
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      CI_RESULT: ${{ needs.ci.result }}
+      AUDIT_RESULT: ${{ needs.audit.result }}
+      DEPLOY_RESULT: ${{ needs.deploy.result }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          sha=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)
+          # Cancelled (by hand, or a pull request's e2e job taking its place in
+          # the queue on your own runner): nothing was found wrong, so no
+          # issue; nothing was deployed either.
+          case " $CI_RESULT $AUDIT_RESULT $DEPLOY_RESULT " in
+            *" cancelled "*)
+              echo "::warning::The nightly was cancelled on $sha (CI: $CI_RESULT, audit: $AUDIT_RESULT, deploy: $DEPLOY_RESULT): nothing deployed. Run workflow to run it again."
+              exit 0 ;;
+          esac
+          issue=$(gh issue list --label nightly --state open --json number --jq '.[0].number // empty')
+          # Skipped is fine for the deploy: no DEPLOY_SSH in this repository.
+          if [ "$CI_RESULT" = success ] && [ "$AUDIT_RESULT" = success ] &&
+            { [ "$DEPLOY_RESULT" = success ] || [ "$DEPLOY_RESULT" = skipped ]; }; then
+            echo "The nightly passed on $sha."
+            [ -z "$issue" ] && exit 0
+            gh issue close "$issue" --comment "Green again on $sha: $RUN"
+            # The pull requests held while it was red: run their CI again.
+            # (A close by this token starts no workflow, so not nightly-closed.yml.)
+            sh scripts/rerun-held.sh
+            exit 0
+          fi
+
+          body=$(printf '%s\n' \
+            "The nightly failed on $sha: $RUN" \
+            "" \
+            "| Check | Result |" \
+            "| --- | --- |" \
+            "| CI (verify, coverage, Playwright in every browser, no retries) | $CI_RESULT |" \
+            "| Dependency audit | $AUDIT_RESULT |" \
+            "| Deploy (backup only unless everything passed) | $DEPLOY_RESULT |" \
+            "" \
+            "While this issue is open, Renovate's pull requests (but its security fixes) and the sync from the starter don't merge themselves. The next green nightly closes it. To merge a held pull request that fixes it, close this issue: its CI runs again.")
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$body"
+          else
+            gh label create nightly --color B60205 --description "The nightly failed" --force
+            gh issue create --title "The nightly is red" --label nightly --body "$body"
+          fi
+          exit 1

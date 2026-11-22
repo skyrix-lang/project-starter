@@ -210,8 +210,9 @@ the e2e run's `SMTP_HOST` at it, or when a provider's HTTP API is needed
 The starter carries the whole deploy (`yarn deploy`, the server scripts,
 `docker/compose.production.yaml`, the nightly `Deploy` workflow), first built
 for zbeul. Nothing runs until a project sets the `DEPLOY_SSH` variable. Every
-night at 02:00 (Paris), the workflow deploys `main` if the server doesn't run
-it yet and CI passed on it; each deploy stops the app, backs the database up
+night around 02:00 (Paris), the workflow deploys the commit the nightly just
+checked if the server doesn't run it yet and every check passed (see "A
+nightly gates the deploy"); each deploy stops the app, backs the database up
 to Cloudflare R2 and proves the backup restores before migrating, and a
 failed migration, health check or public https check restores the database
 (only if a migration ran) and starts the previous image. Nights without a
@@ -411,3 +412,26 @@ it. The deploy job writes an SSH key and known hosts into the runner's home,
 which a self-hosted runner shares between jobs and repositories. **Revisit
 when:** a project needs a different runner per job, or the deploy key can be
 kept out of the runner's home.
+
+## A nightly gates the deploy
+
+Every night at 01:30 (Paris) the `Nightly` workflow runs CI itself on
+`main`, plus coverage with minimums that only go up, Playwright in Firefox
+and WebKit with no retries, and a dependency audit. The deploy that follows
+deploys the commit it checked only if everything passed, and backs up either
+way. A red night opens one `nightly` issue, and while it's open the pull
+requests that merge themselves (Renovate's, the starter's sync) wait.
+Releases, Claude's fix and deploying the CI image follow
+(`docs/specs/nightly-and-release.md`).
+**Why:** changes reach production without a person reading each one, so the
+gate before production must be the most thorough run, not the quickest; a
+pull request stays fast with Chromium and retries. Flaws in dependencies
+appear without a code change, which only a scheduled run catches. A failure
+nobody sees is the main risk, hence one issue rather than a red run in
+Actions, and no new changes merged on top of it. The nightly calls CI rather
+than copying it, so the two never drift. Renaming `ci.yml` to `verify.yml`
+was rejected: the deploy and the required checks know it by name, and every
+project would get the rename for nothing.
+**Revisit when:** the nightly takes too long to finish before 02:00, or a
+project on GitHub's runners runs out of minutes: run the full suite only on
+nights when `main` changed.

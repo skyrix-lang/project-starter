@@ -38,7 +38,8 @@ if [ "$repo" = "$starter" ]; then project=""; else project=.starter.json; fi
 
 for file in $project renovate.json .github/workflows/ci.yml \
   .github/workflows/sync-from-starter.yml .github/workflows/claude-review.yml \
-  .github/workflows/claude.yml; do
+  .github/workflows/claude.yml .github/workflows/nightly.yml \
+  .github/workflows/nightly-closed.yml; do
   if gh api "repos/$repo/contents/$file" --silent 2>/dev/null; then ok "$file"; else ko "$file on the default branch"; fi
 done
 

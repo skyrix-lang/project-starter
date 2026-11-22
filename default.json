@@ -8,6 +8,10 @@
   "internalChecksFilter": "strict",
   "postUpdateOptions": ["yarnDedupeHighest"],
   "automergeStrategy": "merge-commit",
+  "vulnerabilityAlerts": {
+    "description": "Security fixes are labelled, so a red nightly doesn't hold them (ci.yml, \"Is the nightly green?\"): they may be what turns it green.",
+    "labels": ["security"]
+  },
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,

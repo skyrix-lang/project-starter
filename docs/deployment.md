@@ -141,9 +141,10 @@ Then start the version that matches the data:
 
 ## Deploying automatically
 
-`.github/workflows/deploy.yml` runs every night at 02:00, Paris time: it
-deploys `main` if the server doesn't run that commit yet and CI passed on it,
-and otherwise backs the database up. **Run workflow** in the Actions tab
+`.github/workflows/deploy.yml` runs every night, around 02:00 Paris time,
+called by the nightly once its checks are done (docs/development.md, "The
+nightly"): it deploys the commit the nightly checked if every check passed
+and the server doesn't run it yet, and otherwise backs the database up. **Run workflow** in the Actions tab
 deploys `main` at once. It does nothing, in the starter and in any project,
 until the `DEPLOY_SSH` repository variable is set. Turning it on (a deploy
 key, the `production` environment, two secrets and a variable):

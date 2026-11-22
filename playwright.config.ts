@@ -32,11 +32,21 @@ Object.assign(process.env, {
   SMTP_HOST: "",
 });
 
+// The nightly (.github/workflows/nightly.yml) runs with E2E_RETRIES=0, so a
+// flaky test fails instead of passing on a retry, and E2E_BROWSERS=all,
+// which adds Firefox and WebKit. Pull requests keep Chromium and two retries.
+const retries = Number(process.env.E2E_RETRIES || (process.env.CI ? 2 : 0));
+const browsers = process.env.E2E_BROWSERS === "all";
+const screens = {
+  testIgnore: ["api.spec.ts", "auth.setup.ts"],
+  dependencies: ["setup"],
+};
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: BASE_URL,
@@ -55,16 +65,31 @@ export default defineConfig({
     },
     {
       name: "desktop",
-      testIgnore: ["api.spec.ts", "auth.setup.ts"],
-      dependencies: ["setup"],
+      ...screens,
       use: { ...devices["Desktop Chrome"], storageState: SIGNED_IN_STATE },
     },
     {
       name: "mobile",
-      testIgnore: ["api.spec.ts", "auth.setup.ts"],
-      dependencies: ["setup"],
+      ...screens,
       use: { ...devices["Pixel 7"], storageState: SIGNED_IN_STATE },
     },
+    ...(browsers
+      ? [
+          {
+            name: "firefox",
+            ...screens,
+            use: {
+              ...devices["Desktop Firefox"],
+              storageState: SIGNED_IN_STATE,
+            },
+          },
+          {
+            name: "webkit",
+            ...screens,
+            use: { ...devices["iPhone 15"], storageState: SIGNED_IN_STATE },
+          },
+        ]
+      : []),
   ],
   // Tests run against the production build, on their own port, so a running
   // `yarn dev` is left alone.
