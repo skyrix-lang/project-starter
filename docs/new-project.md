@@ -194,7 +194,7 @@ scan has run. Then try the whole chain once:
 
 ## 9. Deploying automatically (optional)
 
-To have `main` deployed to a server every night once CI passed on it, with
+To have `main` deployed to a server every night once the nightly checks passed on it, with
 the database backed up to Cloudflare R2 first: the steps, SSH key, secrets
 and bucket included, are in [auto-deploy.md](auto-deploy.md).
 

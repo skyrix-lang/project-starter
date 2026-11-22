@@ -7,6 +7,21 @@ export default defineConfig({
     // Never real mail, even when the shell exports SMTP settings: an empty
     // SMTP_HOST means mail is only logged (apps/bff/src/mail.ts).
     env: { SMTP_HOST: "" },
+    // `yarn test:coverage`, which the nightly runs: fails if coverage drops
+    // below these minimums. Raise them when coverage goes up, never lower
+    // them to make a run pass (docs/development.md, "Coverage").
+    coverage: {
+      provider: "v8",
+      include: ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"],
+      exclude: [
+        "**/*.test.{ts,tsx}",
+        "**/*.gen.ts",
+        "packages/api/**",
+        "packages/db/drizzle/**",
+      ],
+      reporter: ["text-summary", "html"],
+      thresholds: { statements: 66, branches: 62, functions: 66, lines: 67 },
+    },
     projects: [
       {
         test: {

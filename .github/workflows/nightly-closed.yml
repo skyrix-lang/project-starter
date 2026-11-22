@@ -1,0 +1,27 @@
+name: Nightly issue closed
+
+# A person closed the `nightly` issue (for instance to merge the pull request
+# that fixes it): run CI again on the pull requests the red nightly held, so
+# they can merge (scripts/rerun-held.sh). When the nightly closes the issue
+# itself, it does the same: GitHub starts no workflow for its own token.
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+
+jobs:
+  release:
+    if: contains(github.event.issue.labels.*.name, 'nightly')
+    runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: sh scripts/rerun-held.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}

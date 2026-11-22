@@ -5,14 +5,24 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  # The nightly (nightly.yml) runs this same CI on main, with `nightly: true`:
+  # coverage, Firefox and WebKit, and no retries.
+  workflow_call:
+    inputs:
+      nightly:
+        type: boolean
+        default: false
 
 # A newer push to the same branch or pull request cancels the run in progress.
+# The event is in the name, so the nightly and a push to main don't cancel
+# each other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+  issues: read # is a nightly issue open? (the last step of checks)
 
 jobs:
   checks:
@@ -33,6 +43,30 @@ jobs:
       - run: yarn install --immutable
       # What agents run after each step.
       - run: yarn verify
+      # At night: fails if coverage dropped below vitest.config.ts's minimums.
+      - if: inputs.nightly
+        run: yarn test:coverage
+      # While the nightly is red (an open issue labelled "nightly"), the pull
+      # requests that merge themselves wait: Renovate's and the sync from the
+      # starter. Not Renovate's security fixes (label "security", default.json),
+      # which may be what turns it green, and never people's pull requests.
+      # To merge a held one yourself, close the issue: its CI runs again
+      # (nightly-closed.yml).
+      - name: Is the nightly green?
+        if: >-
+          github.event_name == 'pull_request' &&
+          (startsWith(github.head_ref, 'renovate/') ||
+          github.head_ref == 'sync-from-starter') &&
+          !contains(github.event.pull_request.labels.*.name, 'security')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --label nightly --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$issue" ]; then
+            echo "::error::The nightly is red (#$issue): this pull request waits until it's fixed. If it is the fix, close #$issue: CI runs again here, then it merges."
+            exit 1
+          fi
 
   e2e:
     name: Playwright (with axe)
@@ -53,17 +87,22 @@ jobs:
           node-version-file: .nvmrc
           cache: yarn
       - run: yarn install --immutable
-      # The browser's system libraries need sudo: on your own runners they're
-      # installed already (docs/development.md, "CI").
+      # Chromium, and at night Firefox and WebKit too. Their system libraries
+      # need sudo: on your own runners they're installed once by an admin
+      # (docs/development.md, "CI").
+      - id: browsers
+        run: echo "list=chromium${{ inputs.nightly && ' firefox webkit' || '' }}" >> "$GITHUB_OUTPUT"
       - if: runner.environment == 'github-hosted'
-        run: yarn playwright install --with-deps chromium
+        run: yarn playwright install --with-deps ${{ steps.browsers.outputs.list }}
       - if: runner.environment != 'github-hosted'
-        run: yarn playwright install chromium
+        run: yarn playwright install ${{ steps.browsers.outputs.list }}
       # Starts Postgres and Keycloak in Docker, builds the app and runs the
       # tests, exactly as it does locally.
       - run: yarn test
         env:
           CI: true
+          E2E_RETRIES: ${{ inputs.nightly && '0' || '' }}
+          E2E_BROWSERS: ${{ inputs.nightly && 'all' || '' }}
       # Your own runner keeps running what a job started: stop the
       # containers, so they don't hold its memory until the next run. Each
       # command may fail (a container never started, a job that stopped
@@ -75,14 +114,15 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report${{ inputs.nightly && '-nightly' || '' }}
           path: playwright-report/
           retention-days: 14
 
   image:
     name: Image (SBOM, provenance, signature)
     needs: [checks, e2e]
-    if: github.event_name != 'pull_request'
+    # Pushes to main and tags only: not pull requests, not the nightly.
+    if: github.event_name == 'push'
     runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
