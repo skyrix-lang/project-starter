@@ -34,7 +34,7 @@ import which.
    `docs/specs/` (template there). Wait for answers to its open questions.
 3. **Build in small steps** with the workflow that fits, from
    `.claude/skills/<name>/SKILL.md` (plain Markdown, for any agent): `design`,
-   `new-feature`, `new-page`, `seo-check`, `run-app`. Run `yarn verify` after each step.
+   `new-feature`, `new-page`, `e2e-scenario`, `seo-check`, `run-app`. Run `yarn verify` after each step.
 4. **See it work.** Tests prove it; also check the running app (`run-app`): sign
    in with `yarn dev:session`, load the page, read the console and server output.
 5. **Done means:** `yarn verify` and `yarn test` pass; new behaviour has tests

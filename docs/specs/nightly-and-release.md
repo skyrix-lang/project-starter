@@ -53,9 +53,11 @@ instead of sitting in the Actions tab.
    - **An image scan** of the built image, for flaws in the base image and
      system packages, with Grype (`anchore/scan-action`, pinned by commit).
      It comes with step (d), once that image is the one deployed.
-   - **Coverage** of the Vitest suites (`@vitest/coverage-v8`), failing if
-     it drops below the committed minimum. The minimum starts at today's
-     level and is raised by hand when coverage goes up.
+   - **Coverage** of all the tests together (`yarn test:coverage`: the
+     Vitest suites and the Playwright tests, browser and BFF, merged by
+     source file), failing if it drops below `coverage-minimums.json`. Each
+     project owns that file; the minimums start at its level and are raised
+     by hand when coverage goes up.
 
    Every job runs on `vars.RUNNER`, like the rest of CI. On a project's own
    runner the nightly costs no minutes, so it runs in full every night.

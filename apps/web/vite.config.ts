@@ -41,7 +41,13 @@ export default defineConfig(({ mode }) => {
         ]),
       ),
     },
-    build: { sourcemap: true },
+    build: {
+      sourcemap: true,
+      // `yarn test:coverage` (scripts/coverage.ts): unminified, so the e2e
+      // tests' coverage counts each file's statements as Vitest does. Only
+      // that local and nightly test build: the image's build minifies.
+      minify: process.env.E2E_COVERAGE ? false : undefined,
+    },
   };
 });
 

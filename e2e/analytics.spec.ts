@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import type { Page } from "@playwright/test";
 import { expect, gotoHydrated, test as base } from "./support";
+import { BFF_DIR } from "../scripts/coverage-options";
 
 // Google Analytics is off unless the server has a measurement id. The main
 // test server has none; these tests start a second one, from the same build,
@@ -38,6 +39,8 @@ async function startServer(): Promise<{ url: string; server: ChildProcess }> {
       PUBLIC_URL: url,
       GA_MEASUREMENT_ID: MEASUREMENT_ID,
       LOG_LEVEL: "warn",
+      // `yarn test:coverage`: this server's coverage counts too.
+      ...(process.env.E2E_COVERAGE ? { NODE_V8_COVERAGE: BFF_DIR } : {}),
     },
     stdio: ["ignore", "ignore", "inherit"],
   });

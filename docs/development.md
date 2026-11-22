@@ -83,11 +83,13 @@ organization, private, on your own runners".
 then (**Run workflow** in the Actions tab runs it now):
 
 - **CI itself** (`ci.yml`, called with `nightly: true`), with three more
-  checks than on a pull request: `yarn test:coverage`, Playwright in Firefox
+  checks than on a pull request: coverage (`yarn test:coverage` in place of
+  `yarn test`), Playwright in Firefox
   and WebKit as well as Chromium (`E2E_BROWSERS=all`), and no retries
   (`E2E_RETRIES=0`), so a flaky test fails here instead of passing on a
-  retry. To run the same locally: `E2E_BROWSERS=all E2E_RETRIES=0 yarn test`,
-  after `yarn playwright install firefox webkit`.
+  retry. To run the same locally:
+  `E2E_BROWSERS=all E2E_RETRIES=0 yarn test:coverage`, after
+  `yarn playwright install firefox webkit`.
 - **A dependency audit**, `yarn npm audit --all --recursive --severity high`:
   new flaws appear in code that hasn't changed. To accept an advisory with no
   fix yet, add it to `npmAuditIgnoreAdvisories` in `.yarnrc.yml`, with a
@@ -109,8 +111,34 @@ nothing.
 
 ### Coverage
 
-`yarn test:coverage` runs the Vitest suites with coverage, and fails if it
-drops below the minimums in `vitest.config.ts` (`coverage.thresholds`). They
-started at the level of November 2026. Raise them in the pull request that
-raises coverage; never lower them to make a run pass. The report is in
-`coverage/index.html`.
+`yarn test:coverage` (`scripts/coverage.ts`) counts what all the tests run,
+together: the Vitest suites, and the Playwright tests, in the browser
+(Chromium records each test's coverage, `e2e/support.ts`) and in the BFF
+(`NODE_V8_COVERAGE`, written when the server stops). Both are mapped back to
+the source files through the build's source maps and merged by file, into
+`coverage/report/index.html`. It then fails if any metric is below
+`coverage-minimums.json`. It needs Docker, like `yarn test`, and takes the
+same arguments: `yarn test:coverage e2e/bookings.scenario.spec.ts` shows what
+that file covers on its own, without the unit tests or the minimums. `yarn test:unit
+--coverage` shows the unit tests' alone.
+
+The minimums are each project's own: the sync adds the file once and never
+changes it (`SEED_ONLY`, docs/starter-sync.md), set to 0 by the sync's Claude
+pass, since the starter's levels aren't the project's. Set them once:
+run `yarn test:coverage` and write its four figures, rounded down. Untested
+files count as uncovered (compiled like the build, so their statements count
+too). Vitest's coverage comes through `vitest-monocart-coverage`, so both
+are raw V8 data, merged by source file through the source maps (the e2e
+build is left unminified for it: `apps/web/vite.config.ts`).
+
+One limit to know: a file is measured on the code that loaded it. Vitest's
+compile and the build's split a file into statements slightly differently,
+so a file only the e2e tests load counts fewer statements and lines than the
+same file loaded by a unit test, and a file both load counts the two sets
+together. The figures don't change from one run to the next, but the first
+unit test for a file the e2e tests already cover can move the total a little
+either way. If a run fails right after such a test, check the file in the
+report before anything else; never lower the minimums to make it pass. Raise them in the pull request
+that raises coverage, to the new level rounded down; never lower them to make
+a run pass. A whole journey through a feature is an e2e scenario (the
+`e2e-scenario` skill); logic with many cases is a unit test next to it.
