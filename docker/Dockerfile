@@ -4,7 +4,7 @@
 
 # One base for every stage, pinned by digest so a build is repeatable: the tag
 # alone can point at a different image tomorrow. Renovate updates the digest.
-FROM node:24-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8 AS base
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS base
 WORKDIR /app
 
 # Only what `yarn install` reads: the lockfile, Yarn's settings and every
