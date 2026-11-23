@@ -14,6 +14,16 @@ import { pathToFileURL } from "node:url";
 const STARTER_NAME = "booking-platform";
 const GENERATED = "packages/api/src/generated/";
 
+/** A project's renovate.json: the starter's preset for projects (project.json). */
+export const PROJECT_RENOVATE = `${JSON.stringify(
+  {
+    $schema: "https://docs.renovatebot.com/renovate-schema.json",
+    extends: ["github>skyrix-lang/project-starter:project"],
+  },
+  null,
+  2,
+)}\n`;
+
 export type Names = {
   /** Package scope, image and container prefix: `acme` gives `@acme/core`. */
   slug: string;
@@ -147,6 +157,10 @@ function main() {
     ".starter.json",
     `${JSON.stringify({ slug, title, commit, ignore: [] }, null, 2)}\n`,
   );
+
+  // Projects follow the starter's update policy without its majors: those
+  // come through the sync (docs/starter-sync.md, "Versions: Renovate").
+  writeFileSync("renovate.json", PROJECT_RENOVATE);
 
   console.log("• Updating yarn.lock…");
   execFileSync("yarn", ["install"], { stdio: "inherit" });

@@ -56,11 +56,12 @@ yarn install
 yarn rename acme-portal "Acme Portal"
 ```
 
-`yarn rename` replaces the starter's name wherever it's an identifier and
-writes `.starter.json`, where `yarn sync-from-starter` starts from. The rest,
+`yarn rename` replaces the starter's name wherever it's an identifier,
+writes `.starter.json`, where `yarn sync-from-starter` starts from, and points
+`renovate.json` at the starter's policy for projects. The rest,
 step by step: [docs/new-project.md](docs/new-project.md). Afterwards,
 Renovate keeps versions current and a workflow brings in the starter's
-changes as pull requests: [docs/starter-sync.md](docs/starter-sync.md).
+changes as pull requests, majors included: [docs/starter-sync.md](docs/starter-sync.md).
 
 ## Working with AI agents
 

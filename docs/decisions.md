@@ -185,6 +185,14 @@ on `main`, merge commits only: `scripts/setup-github.sh`): Renovate's
 non-major updates, and a sync that applied cleanly, which the starter
 triggers as soon as its `main` changes. A sync with conflicts, even ones
 Claude resolved, and Renovate majors wait for a person.
+Majors open a pull request in the starter only: projects extend `project.json`,
+which holds them in the Dependency Dashboard, and the sync brings the
+starter's major, with the code changes it needed. Projects keep Renovate for
+the rest: the weekly lockfile, security fixes, and dependencies only they have.
+**Why (majors):** the same major in four repositories meant the same code
+changes made four times; the sync makes them once. Renovate stays in projects
+because the sync never refreshes `yarn.lock` and can't see a project's own
+dependencies.
 **Why (auto-merge):** one person maintains the starter and its projects; a
 clean, green sync is the starter's reviewed change arriving unchanged, while a
 resolved conflict is a judgement call CI can't check.

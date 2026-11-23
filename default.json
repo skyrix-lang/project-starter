@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Update policy shared by project-starter and every project made from it. Projects use it with `\"extends\": [\"github>skyrix-lang/project-starter\"]` in renovate.json.",
+  "description": "Update policy shared by project-starter and every project made from it. The starter uses it directly; projects use it through project.json, which leaves majors to the sync from the starter.",
   "extends": ["config:recommended", ":dependencyDashboard"],
   "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 10,

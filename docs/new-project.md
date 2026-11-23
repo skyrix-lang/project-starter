@@ -141,8 +141,8 @@ gh variable set STARTER_PROJECTS -R skyrix-lang/project-starter \
   → Renovate → **Configure** → Repository access → add `acme-portal`. Then on
   [developer.mend.io](https://developer.mend.io) → skyrix-lang → acme-portal,
   click **Run Renovate scan**. Its first run opens the "Dependency Dashboard"
-  issue. Nothing to add to the repository: `renovate.json` came with the
-  starter.
+  issue. Nothing to add to the repository: `yarn rename` pointed
+  `renovate.json` at the starter's policy for projects (`project.json`).
 - **Claude:** if the Claude GitHub app is installed for selected repositories
   only, add `acme-portal` the same way (Claude → **Configure**). If it's
   installed for all repositories, there's nothing to do.

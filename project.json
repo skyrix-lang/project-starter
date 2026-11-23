@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Update policy for projects made from project-starter: the starter's (default.json), except majors. Projects use it with `\"extends\": [\"github>skyrix-lang/project-starter:project\"]` in renovate.json.",
+  "extends": ["github>skyrix-lang/project-starter"],
+  "packageRules": [
+    {
+      "description": "Majors come from the starter: its own Renovate opens them, and the sync brings them here with the code changes they needed (docs/starter-sync.md). A major for a dependency only this project has waits in the Dependency Dashboard: tick it to open its pull request.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "description": "Security fixes, majors included, don't wait for the dashboard.",
+    "dependencyDashboardApproval": false
+  }
+}
