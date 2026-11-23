@@ -172,8 +172,8 @@ and whenever you click **Run workflow** in the project's Actions tab.
    If the pull request it continued merged or closed while it ran (a clean
    sync merging itself), it pushes nothing and starts again from the default
    branch instead: the workflow dispatches itself, which needs its
-   `actions: write` permission (granted in the workflow file; the "Read and
-   write permissions" setting below allows it).
+   `actions: write` permission. The workflow file grants it itself, whatever
+   the repository's default token permission.
 4. A **clean** sync merges itself once CI passes: the starter merged without
    conflicts, Claude's pass succeeded, and `STARTER_SYNC_TOKEN` is set (CI
    doesn't run otherwise). Anything else waits for you to review and merge:
