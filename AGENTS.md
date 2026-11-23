@@ -108,7 +108,8 @@ databases.
   put a `<button>` inside a link.
 - Accessibility is a requirement (WCAG 2.2 AA, European Accessibility Act):
   labelled controls, one `h1`, no skipped heading levels, visible focus. Every
-  e2e test runs axe on the page it ends on.
+  e2e test runs axe on the page it ends on (not in Firefox, which crashes
+  under it: `docs/decisions.md`).
 
 ## Typography and layout
 

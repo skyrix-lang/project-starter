@@ -100,14 +100,14 @@ image serves any customer and domain.
 `script-src 'self'` with no `'unsafe-inline'`: Vite emits no inline scripts.
 `form-action` allows the identity provider, for sign-out. Set in
 `apps/bff/src/app.ts` with Hono's `secureHeaders`.
-**Why:** the strongest policy that costs nothing when nothing is
-server-rendered.
-**Revisit when:** a provider's `end_session_endpoint` isn't on the issuer's
-host: add its origin to `form-action`.
 With no `'unsafe-eval'`, Zod runs jitless in the browser
 (`apps/web/src/zod-config.ts`, imported first by `main.tsx` and bundled with
 Zod by `vite.config.ts`): otherwise it tries `new Function` once, and Firefox
 reports the refusal as a console error.
+**Why:** the strongest policy that costs nothing when nothing is
+server-rendered.
+**Revisit when:** a provider's `end_session_endpoint` isn't on the issuer's
+host: add its origin to `form-action`.
 
 ## Vitest, MSW and Playwright with axe
 
