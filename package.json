@@ -21,7 +21,7 @@
     "drizzle-orm": "^0.45.4",
     "jsdom": "^30.1.3",
     "monocart-coverage-reports": "^3.2.1",
-    "oxfmt": "^0.76.0",
+    "oxfmt": "^0.78.0",
     "oxlint": "^1.91.0",
     "oxlint-tsgolint": "^7.0.2005",
     "pg": "^8.23.1",
