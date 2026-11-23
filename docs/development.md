@@ -50,7 +50,8 @@ origin, as in production.
 - **End-to-end tests** (`yarn test`) build the app and run it with the bundled
   BFF on its own port and database, signing in through the local Keycloak.
   Every test also fails on a browser console error, or on an axe accessibility
-  violation (WCAG 2.2 AA) on the page it ends on. Most tests sign in by writing
+  violation (WCAG 2.2 AA) on the page it ends on (in Chromium and WebKit:
+  Firefox crashes under axe, see `docs/decisions.md`). Most tests sign in by writing
   a session row; `e2e/auth.spec.ts` drives the real Keycloak login.
 
 ## CI

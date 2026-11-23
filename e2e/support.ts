@@ -21,7 +21,7 @@ import { createLocalSession, storageState } from "../scripts/local-session";
  *   pages). Tests that trigger an error on purpose opt out with
  *   `test.use({ allowConsoleErrors: true })`.
  * - an accessibility violation (WCAG 2.2 AA, checked with axe) on the app
- *   page the test ends on.
+ *   page the test ends on, in Chromium and WebKit.
  * With E2E_COVERAGE=1 (`yarn test:coverage`), each test in Chromium also
  * records which of the app's code ran in the browser (scripts/coverage.ts).
  */
@@ -64,10 +64,25 @@ export const test = base.extend<{
     { auto: true },
   ],
   checkAccessibility: [
-    async ({ page, baseURL }, use, testInfo) => {
+    async ({ page, baseURL, browserName }, use, testInfo) => {
       await use();
       if (testInfo.status !== testInfo.expectedStatus) return;
       if (!page.url().startsWith(baseURL!)) return;
+      // firefox 159 (playwright 1.65) crashes while axe checks some pages (a
+      // form field that had focus, the consent banner). chromium and webkit
+      // check the same pages; see docs/decisions.md.
+      if (browserName === "firefox") return;
+      // a colour or opacity still changing (a theme switch, a link just made
+      // active, a toast fading in) fails contrast midway: check once it ends.
+      // endless ones (a spinner) never end, so they aren't waited for.
+      await page.evaluate(() =>
+        Promise.all(
+          document
+            .getAnimations()
+            .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+            .map((a) => a.finished.catch(() => {})),
+        ),
+      );
       const { violations } = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
