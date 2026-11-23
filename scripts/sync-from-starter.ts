@@ -26,16 +26,22 @@ import { renameText, titleFromSlug, type Names } from "./rename";
 // sync, the project's names, and the paths never to sync. The first time, pass
 // the starter commit the project was made from: --base <commit>.
 //
-// Versions don't need this: Renovate updates them in every project, from the
-// policy in the starter's default.json.
+// Versions mostly don't need this: Renovate updates them in every project,
+// from the policy in the starter's default.json (project.json in projects,
+// which leaves majors to this sync).
 
 export const STARTER_REPO =
   "https://github.com/skyrix-lang/project-starter.git";
 export const CONFIG_FILE = ".starter.json";
 
-/** Never synced: the lockfile is rebuilt by `yarn install`, the Renovate preset
+/** Never synced: the lockfile is rebuilt by `yarn install`, the Renovate presets
  * and this project's own record belong to one repository each. */
-export const ALWAYS_IGNORED = ["yarn.lock", "default.json", CONFIG_FILE];
+export const ALWAYS_IGNORED = [
+  "yarn.lock",
+  "default.json",
+  "project.json",
+  CONFIG_FILE,
+];
 
 /** The project's own once it has them: added when the starter adds them,
  * never changed or restored after.

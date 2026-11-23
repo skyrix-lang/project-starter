@@ -135,9 +135,10 @@ describe("decide", () => {
 });
 
 describe("isIgnored", () => {
-  it("always ignores the lockfile, the Renovate preset and the sync record", () => {
+  it("always ignores the lockfile, the Renovate presets and the sync record", () => {
     expect(isIgnored("yarn.lock")).toBe(true);
     expect(isIgnored("default.json")).toBe(true);
+    expect(isIgnored("project.json")).toBe(true);
     expect(isIgnored(".starter.json")).toBe(true);
     expect(isIgnored("scripts/setup.ts")).toBe(false);
   });

@@ -16,11 +16,17 @@ with Claude resolving conflicts ("Automatic sync" below). Both are recorded in
 
 `default.json`, at the root of the starter, is a
 [Renovate preset](https://docs.renovatebot.com/config-presets/): the update
-policy for every repository. Each repository, the starter included, has the
-same `renovate.json`, which only extends it:
+policy for every repository. The starter's `renovate.json` only extends it:
 
 ```json
 { "extends": ["github>skyrix-lang/project-starter"] }
+```
+
+A project's extends `project.json`, the same policy without major pull
+requests (`yarn rename` writes it):
+
+```json
+{ "extends": ["github>skyrix-lang/project-starter:project"] }
 ```
 
 The policy:
@@ -39,6 +45,12 @@ The policy:
 - Everything but majors (minor, patch, digests, the weekly lockfile) merges
   itself, with a merge commit, once the checks `main` requires pass. Majors
   wait for you.
+- In a project, majors don't open a pull request: the starter's does, and
+  once it's merged the sync brings the new version with the code changes it
+  needed, so they're made once rather than in every project. A major for a
+  dependency only the project has is listed in its Dependency Dashboard
+  issue: tick it to open the pull request. Security fixes, majors included,
+  still open theirs at once.
 - Security fixes don't wait for Monday: with Dependabot alerts on in the
   repository, Renovate opens a `[SECURITY]` pull request on its next pass,
   which merges itself like any other non-major update. Renovate's default
@@ -46,8 +58,8 @@ The policy:
   than 7 days goes through once it's old enough. Dependabot's own pull
   requests stay off ([new-project.md](new-project.md), step 7).
 
-To change the policy for every project, change `default.json` in the starter
-and merge it: Renovate reads it from the starter's default branch on its next
+To change the policy for every project, change `default.json` (or, for
+projects only, `project.json`) in the starter and merge it: Renovate reads it from the starter's default branch on its next
 run. A project that needs an exception adds rules to its own `renovate.json`,
 after the `extends`.
 
@@ -56,7 +68,7 @@ on the starter and on each project's repository, and run
 `scripts/setup-github.sh <owner/repo>` once for each ("Auto-merge" below):
 without required checks, GitHub would merge an auto-merge pull request before
 CI has run. Check the config with
-`npx --package renovate renovate-config-validator default.json renovate.json`.
+`npx --package renovate renovate-config-validator default.json project.json renovate.json`.
 
 ## Everything else: `yarn sync-from-starter`
 

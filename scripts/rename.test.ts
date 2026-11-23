@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { isValidSlug, isValidTitle, renameText, titleFromSlug } from "./rename";
+import {
+  PROJECT_RENOVATE,
+  isValidSlug,
+  isValidTitle,
+  renameText,
+  titleFromSlug,
+} from "./rename";
 
 const names = { slug: "acme-portal", title: "Acme Portal" };
 const rename = (content: string) => renameText(content, names);
@@ -161,4 +167,16 @@ describe("isValidTitle", () => {
 
 it("titleFromSlug capitalizes each word", () => {
   expect(titleFromSlug("acme-portal")).toBe("Acme Portal");
+});
+
+it("gives a project the starter's Renovate preset for projects", () => {
+  const config = JSON.parse(PROJECT_RENOVATE) as { extends: string[] };
+  expect(config.extends).toEqual([
+    "github>skyrix-lang/project-starter:project",
+  ]);
+  // The preset it names exists, and extends the shared policy.
+  const preset = JSON.parse(readFileSync("project.json", "utf8")) as {
+    extends: string[];
+  };
+  expect(preset.extends).toEqual(["github>skyrix-lang/project-starter"]);
 });
