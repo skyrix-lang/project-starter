@@ -1,3 +1,5 @@
+// first: some modules below check data with zod as they load.
+import "./zod-config";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";

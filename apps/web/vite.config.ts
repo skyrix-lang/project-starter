@@ -47,6 +47,21 @@ export default defineConfig(({ mode }) => {
       // tests' coverage counts each file's statements as Vitest does. Only
       // that local and nightly test build: the image's build minifies.
       minify: process.env.E2E_COVERAGE ? false : undefined,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            // zod and its settings (src/zod-config.ts) in one chunk: every
+            // chunk with a schema loads it first, so the settings apply
+            // before any schema is made, however the rest is split.
+            groups: [
+              {
+                name: "zod",
+                test: /[\\/]node_modules[\\/]zod[\\/]|[\\/]src[\\/]zod-config\.ts$/,
+              },
+            ],
+          },
+        },
+      },
     },
   };
 });

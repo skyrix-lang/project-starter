@@ -104,6 +104,10 @@ image serves any customer and domain.
 server-rendered.
 **Revisit when:** a provider's `end_session_endpoint` isn't on the issuer's
 host: add its origin to `form-action`.
+With no `'unsafe-eval'`, Zod runs jitless in the browser
+(`apps/web/src/zod-config.ts`, imported first by `main.tsx` and bundled with
+Zod by `vite.config.ts`): otherwise it tries `new Function` once, and Firefox
+reports the refusal as a console error.
 
 ## Vitest, MSW and Playwright with axe
 
@@ -113,6 +117,11 @@ against the production bundle with real Postgres and Keycloak, and every test
 also fails on a console error or an axe WCAG 2.2 AA violation.
 **Why:** fast feedback that makes agent-written code trustworthy, and the
 European Accessibility Act covers e-commerce and e-ticketing.
+The axe check waits for CSS transitions to end, and is skipped in Firefox:
+Firefox 159 (Playwright 1.65) crashes while axe checks some pages, and
+Chromium and WebKit check the same pages.
+**Revisit when:** Playwright ships a newer Firefox: run the nightly's
+Firefox project with the check back on.
 
 ## oxlint and oxfmt, not ESLint and Prettier
 
