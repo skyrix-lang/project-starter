@@ -37,7 +37,7 @@ instead of sitting in the Actions tab.
 
 ### Afterwards
 
-1. **`nightly.yml` runs at 01:30 Paris time.** It uses the same two crons and
+1. **`nightly.yml` runs at 01:13 Paris time.** It uses the same two crons and
    Paris-hour check as `deploy.yml` today, moved into the nightly. It checks
    out `main` and runs:
    - **`CI` itself**, called as a reusable workflow (`workflow_call` added to

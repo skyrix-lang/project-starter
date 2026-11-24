@@ -432,7 +432,7 @@ kept out of the runner's home.
 
 ## A nightly gates the deploy
 
-Every night at 01:30 (Paris) the `Nightly` workflow runs CI itself on
+Every night at 01:13 (Paris) the `Nightly` workflow runs CI itself on
 `main`, plus coverage of the unit and e2e tests together with minimums that
 only go up (see "Coverage counts the e2e tests"), Playwright in Firefox
 and WebKit with no retries, and a dependency audit. The deploy that follows
@@ -453,6 +453,11 @@ project would get the rename for nothing.
 **Revisit when:** the nightly takes too long to finish before 02:00, or a
 project on GitHub's runners runs out of minutes: run the full suite only on
 nights when `main` changed.
+It starts at 01:13, not on the half hour: GitHub starts scheduled workflows
+late when it's busy, worst on round minutes, and in November 2026 the 01:30
+runs started four to ten hours late. GitHub promises no start time either way.
+**Revisit when:** runs still start hours late: trigger the nightly from a
+machine's cron through `workflow_dispatch`.
 
 ## Coverage counts the e2e tests
 
