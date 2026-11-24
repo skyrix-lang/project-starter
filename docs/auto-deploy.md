@@ -46,7 +46,7 @@ they go in variables, never in a committed file.
 ## How it works
 
 ```
-every night, 01:30 Paris ─▶ Nightly: CI in full and an audit, on main's commit
+every night, 01:13 Paris ─▶ Nightly: CI in full and an audit, on main's commit
                              │ then, around 02:00
                              ▼
                            Deploy workflow (SSH, a key for this only, host key pinned)
@@ -67,9 +67,9 @@ every night, 01:30 Paris ─▶ Nightly: CI in full and an audit, on main's comm
                                        migration ran), start the previous image
 ```
 
-- **When:** the `Nightly` workflow starts at 01:30. GitHub's cron is UTC
-  only, so two crons (`30 23 * * *` and `30 0 * * *`) run; a first job keeps
-  the one that is 01:30 in `Europe/Paris` that day (summer or winter time).
+- **When:** the `Nightly` workflow starts at 01:13. GitHub's cron is UTC
+  only, so two crons (`13 23 * * *` and `13 0 * * *`) run; a first job keeps
+  the one that is 01:13 in `Europe/Paris` that day (summer or winter time).
   The deploy starts once its checks are done, between about 01:45 and 02:15,
   when nobody uses the app and stopping it for about a minute costs nothing.
 - **What:** the commit the nightly checked (`main` when it started, even if
@@ -171,12 +171,12 @@ first, from your machine.
 already there and need no change for 02:00 Paris time. How they work, for
 when they must change:
 
-- the nightly has `on: schedule` with two crons, `"30 23 * * *"` and
-  `"30 0 * * *"` (GitHub's clock is UTC), and `workflow_dispatch`. Its first
+- the nightly has `on: schedule` with two crons, `"13 23 * * *"` and
+  `"13 0 * * *"` (GitHub's clock is UTC), and `workflow_dispatch`. Its first
   job, `when`, outputs `go=true` for a manual run, or when
-  `github.event.schedule` is the cron that is 01:30 in Paris today
-  (`TZ=Europe/Paris date +%z` is `+0200`: `"30 23 * * *"`, otherwise
-  `"30 0 * * *"`). **Another time zone or hour:** change both crons and that
+  `github.event.schedule` is the cron that is 01:13 in Paris today
+  (`TZ=Europe/Paris date +%z` is `+0200`: `"13 23 * * *"`, otherwise
+  `"13 0 * * *"`). **Another time zone or hour:** change both crons and that
   test together;
 - after its checks, the nightly calls `deploy.yml` (`workflow_call`) with the
   commit it checked (`sha`) and whether they all passed (`checks`), and
@@ -361,15 +361,15 @@ database", if the release had a migration), "Rolled back" and "still doesn't
 answer" (the fake address never answers): the site itself is back on the
 previous version. Then **Run workflow** once to deploy `main` again.
 
-The next scheduled runs: Actions → Nightly shows one run at 23:30 and one at
-00:30 UTC each night; the one that isn't 01:30 in Paris stops after its first
+The next scheduled runs: Actions → Nightly shows one run at 23:13 and one at
+00:13 UTC each night; the one that isn't 01:13 in Paris stops after its first
 job, skipping the rest. That's expected.
 
 ## When something doesn't work
 
 | Symptom                                                 | Cause, and the fix                                                                                                                                                                                                                                                                      |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Deploy job is **skipped**                           | On one of the two nightly runs, expected: that one isn't 01:30 in Paris. On both, or on Run workflow: `DEPLOY_SSH` is missing at the **repository** level (often set on the environment instead): move it (step 5).                                                                     |
+| The Deploy job is **skipped**                           | On one of the two nightly runs, expected: that one isn't 01:13 in Paris. On both, or on Run workflow: `DEPLOY_SSH` is missing at the **repository** level (often set on the environment instead): move it (step 5).                                                                     |
 | "The nightly failed on …: not deploying tonight"        | A nightly check failed: the night only backed up, and the `nightly` issue says which. Fix on a branch and merge; it deploys the next night (or Run workflow).                                                                                                                           |
 | "backup.env is missing" / "The backup failed"           | Step 6 isn't done, or the R2 key, bucket or account ID is wrong: the old version runs again and nothing was migrated. Run the backup by hand (step 6) to see why.                                                                                                                       |
 | "R2 holds … bytes … the upload is incomplete"           | The upload to R2 broke: nothing deployed. Usually a network hiccup; Run workflow again.                                                                                                                                                                                                 |

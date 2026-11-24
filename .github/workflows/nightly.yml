@@ -1,6 +1,6 @@
 name: Nightly
 
-# Every night at 01:30, Paris time, on main as it is then:
+# Every night at 01:13, Paris time, on main as it is then:
 #   - CI itself (ci.yml, with `nightly: true`): yarn verify plus coverage, and
 #     Playwright in Chromium, Firefox and WebKit with no retries, so a flaky
 #     test fails here instead of passing on a retry;
@@ -18,10 +18,12 @@ name: Nightly
 
 on:
   schedule:
-    # GitHub's clock is UTC: 01:30 in Paris is 23:30 UTC in summer and 00:30
-    # in winter. Both run; the "when" job keeps the one that is 01:30 there.
-    - cron: "30 23 * * *"
-    - cron: "30 0 * * *"
+    # GitHub's clock is UTC: 01:13 in Paris is 23:13 UTC in summer and 00:13
+    # in winter. Both run; the "when" job keeps the one that is 01:13 there.
+    # Minute 13, not 00 or 30: GitHub delays scheduled runs when it's busy,
+    # and the round minutes are the busiest (hours late at :30, in 2026-11).
+    - cron: "13 23 * * *"
+    - cron: "13 0 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -48,14 +50,14 @@ jobs:
             exit 1
           fi
           if [ -z "$SCHEDULE" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          # Which UTC time is 01:30 in Paris today; the cron that fired says
+          # Which UTC time is 01:13 in Paris today; the cron that fired says
           # which run this is, even if GitHub started it late.
           case "$(TZ=Europe/Paris date +%z)" in
-            +0200) wanted="30 23 * * *" ;;
-            *) wanted="30 0 * * *" ;;
+            +0200) wanted="13 23 * * *" ;;
+            *) wanted="13 0 * * *" ;;
           esac
           if [ "$SCHEDULE" = "$wanted" ]; then echo "go=true" >> "$GITHUB_OUTPUT"
-          else echo "Not 01:30 in Paris on this run: the other one runs the nightly."; fi
+          else echo "Not 01:13 in Paris on this run: the other one runs the nightly."; fi
 
   ci:
     needs: when

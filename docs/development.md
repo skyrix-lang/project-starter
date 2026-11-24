@@ -80,7 +80,7 @@ organization, private, on your own runners".
 
 ### The nightly
 
-`.github/workflows/nightly.yml` runs at 01:30, Paris time, on `main` as it is
+`.github/workflows/nightly.yml` runs at 01:13, Paris time, on `main` as it is
 then (**Run workflow** in the Actions tab runs it now):
 
 - **CI itself** (`ci.yml`, called with `nightly: true`), with three more
