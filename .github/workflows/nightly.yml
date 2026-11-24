@@ -128,6 +128,7 @@ jobs:
     runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
+      contents: read # the checkout, in a private repository too
       issues: write
       pull-requests: read
       actions: write # runs the held pull requests' checks again
